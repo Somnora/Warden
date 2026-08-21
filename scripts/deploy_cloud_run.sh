@@ -14,7 +14,7 @@ MODEL_ARMOR_TEMPLATE="${WARDEN_MODEL_ARMOR_TEMPLATE:-}"
 MODEL_ARMOR_LOCATION="${WARDEN_MODEL_ARMOR_LOCATION:-$REGION}"
 
 if [ -z "$PROJECT_ID" ]; then
-    echo "❌ Error: GOOGLE_CLOUD_PROJECT is not set and no default gcloud project found."
+    echo "Error: GOOGLE_CLOUD_PROJECT is not set and no default gcloud project found."
     echo "Run: gcloud config set project <YOUR_PROJECT_ID>"
     exit 1
 fi
@@ -34,7 +34,7 @@ fi
 TASK_SERVICE_ACCOUNT="${WARDEN_TASK_SERVICE_ACCOUNT:-$RUNTIME_SERVICE_ACCOUNT}"
 
 echo "============================================================================"
-echo " 🛡️  Deploying Warden Operator Control Plane to Google Cloud Run"
+echo "Deploying Warden Operator Control Plane to Google Cloud Run"
 echo " Project: $PROJECT_ID | Region: $REGION | Service: $SERVICE_NAME"
 echo " Runtime mode: $WARDEN_RUNTIME_MODE"
 echo "============================================================================"
@@ -118,14 +118,14 @@ gcloud run services update "$SERVICE_NAME" \
     --project="$PROJECT_ID" >/dev/null
 
 echo "============================================================================"
-echo " ✅ Deployment Complete!"
-echo " 🌐 Web Dashboard:  $SERVICE_URL"
-echo " 📜 OpenAPI Docs:   $SERVICE_URL/docs"
-echo " 🛡️  Red-Team API:   $SERVICE_URL/redteam/run"
-echo " ⚡ Async resumes:   Cloud Tasks queue '$TASK_QUEUE'"
-echo " 🔐 Runtime identity: $RUNTIME_SERVICE_ACCOUNT"
-echo " 🔎 Cloud Trace:      $ENABLE_CLOUD_TRACE"
+echo "Deployment complete"
+echo "Web dashboard:     $SERVICE_URL"
+echo "OpenAPI docs:      $SERVICE_URL/docs"
+echo "Red-team API:      $SERVICE_URL/redteam/run"
+echo "Async resumes:     Cloud Tasks queue '$TASK_QUEUE'"
+echo "Runtime identity:  $RUNTIME_SERVICE_ACCOUNT"
+echo "Cloud Trace:       $ENABLE_CLOUD_TRACE"
 if [ -n "$MODEL_ARMOR_TEMPLATE" ]; then
-    echo " 🛡️  Model Armor:      template '$MODEL_ARMOR_TEMPLATE' in $MODEL_ARMOR_LOCATION"
+    echo "Model Armor:       template '$MODEL_ARMOR_TEMPLATE' in $MODEL_ARMOR_LOCATION"
 fi
 echo "============================================================================"

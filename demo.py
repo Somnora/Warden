@@ -21,7 +21,7 @@ from warden.tools.mock_provider import MockInfrastructureProvider
 
 def print_banner():
     print("\n" + "=" * 76)
-    print(" 🛡️  WARDEN: FORTIFIED ENTERPRISE FLEET CONTROL PLANE")
+    print("WARDEN: FORTIFIED ENTERPRISE FLEET CONTROL PLANE")
     print(" Powered by Google ADK 2.7 and Gemini 3.7 Flash (mock control-plane mode)")
     print("=" * 76 + "\n")
 
@@ -49,7 +49,7 @@ async def run_demo():
     # -------------------------------------------------------------------------
     # SCENE 1: Safe Read-Only Introspection
     # -------------------------------------------------------------------------
-    print("\n🔍 SCENE 1: Safe Read-Only Introspection (Allowed)")
+    print("\nSCENE 1: Safe Read-Only Introspection (Allowed)")
     tool_list = [t for t in runtime.toolsets["auditor"] if t.name == "list_instances"][0]
 
     class DummyContext:
@@ -69,7 +69,7 @@ async def run_demo():
     # -------------------------------------------------------------------------
     # SCENE 2: Hard Zero-Trust Denial (Disallowed Region)
     # -------------------------------------------------------------------------
-    print("\n⛔ SCENE 2: Zero-Trust Hard Denial (Unapproved Region)")
+    print("\nSCENE 2: Zero-Trust Hard Denial (Unapproved Region)")
     tool_launch = [t for t in runtime.toolsets["provisioner"] if t.name == "launch_gpu"][0]
 
     class ProvisionerContext:
@@ -95,7 +95,7 @@ async def run_demo():
     # -------------------------------------------------------------------------
     # SCENE 3: Hard Zero-Trust Denial (Ungoverned Tool)
     # -------------------------------------------------------------------------
-    print("\n⛔ SCENE 3: Hard Denial of Ungoverned Tool (Zero Implicit Allow)")
+    print("\nSCENE 3: Hard Denial of Ungoverned Tool (Zero Implicit Allow)")
     tool_sec = [t for t in runtime.toolsets["security_test"] if t.name == "set_research_key"][0]
 
     print("  >> Agent attempts unapproved credential modification: set_research_key()")
@@ -109,7 +109,7 @@ async def run_demo():
     # -------------------------------------------------------------------------
     # SCENE 4: Human-in-the-Loop Spend Approval
     # -------------------------------------------------------------------------
-    print("\n🙋 SCENE 4: Human-in-the-Loop Approval Workflow")
+    print("\nSCENE 4: Human-in-the-Loop Approval Workflow")
     valid_args = {
         "provider": "gcp",
         "region": "us-west1",
@@ -154,7 +154,7 @@ async def run_demo():
     # -------------------------------------------------------------------------
     # SCENE 5: Egress Secret Redaction
     # -------------------------------------------------------------------------
-    print("\n🔒 SCENE 5: Egress Secret Redaction (Data Loss Prevention)")
+    print("\nSCENE 5: Egress Secret Redaction (Data Loss Prevention)")
     tool_cmd = [t for t in runtime.toolsets["provisioner"] if t.name == "run_command"][0]
     raw_leak = {
         "stdout": "API_ENV=prod\nGOOGLE_API_KEY=AIzaSyA01234567890123456789012345678901\nSTATUS=ok",
@@ -174,7 +174,7 @@ async def run_demo():
     # -------------------------------------------------------------------------
     # SCENE 6: Cryptographic Audit Chain Verification
     # -------------------------------------------------------------------------
-    print("\n⛓️  SCENE 6: Cryptographic Audit Chain Verification")
+    print("\nSCENE 6: Cryptographic Audit Chain Verification")
     records = await runtime.ledger.read()
     print(f"  >> Total recorded actions in current run: {len(records)}")
     for r in records:
@@ -182,13 +182,13 @@ async def run_demo():
 
     verdict = await runtime.ledger.verify()
     print(f"\n  >> Verifying SHA-256 hash chain integrity...")
-    print(f"     Status:       {'✅ PASSED' if verdict.ok else '❌ FAILED'}")
+    print(f"     Status:       {'PASSED' if verdict.ok else 'FAILED'}")
     print(f"     Records:      {verdict.checked}")
     print(f"     Tip Hash:     {records[-1].entry_hash[:20]}...")
     print(f"     Audit Detail: {verdict.detail}")
 
     print("\n" + "=" * 76)
-    print(" ✨ DEMO COMPLETE: ALL GOVERNANCE GATES VERIFIED AND OPERATIONAL")
+    print("DEMO COMPLETE: ALL GOVERNANCE GATES VERIFIED AND OPERATIONAL")
     print("=" * 76 + "\n")
 
 

@@ -1,0 +1,97 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="790" viewBox="0 0 1400 790" role="img" aria-labelledby="title desc">
+  <title id="title">Warden system architecture</title>
+  <desc id="desc">Operators use the Warden dashboard and CLI to dispatch a Gemini ADK fleet. Every tool intent passes through the Warden governance gateway, which connects durable state and Google Cloud services.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" x2="1" y1="0" y2="1"><stop stop-color="#071310"/><stop offset="1" stop-color="#0b1820"/></linearGradient>
+    <linearGradient id="gateway" x1="0" x2="1"><stop stop-color="#064e3b"/><stop offset="1" stop-color="#075985"/></linearGradient>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="#5eead4"/></marker>
+    <style>
+      .heading { font: 700 28px Arial, sans-serif; fill: #f0fdf4; }
+      .sub { font: 400 15px Arial, sans-serif; fill: #a7c2b5; }
+      .group { fill: #0d211b; stroke: #295b4a; stroke-width: 1.5; }
+      .gateway { fill: url(#gateway); stroke: #5eead4; stroke-width: 2; }
+      .node { fill: #102b23; stroke: #39705b; stroke-width: 1.2; }
+      .node-blue { fill: #102a35; stroke: #3b82a0; stroke-width: 1.2; }
+      .node-dark { fill: #0a1714; stroke: #2b5044; stroke-width: 1.2; }
+      .label { font: 700 16px Arial, sans-serif; fill: #ecfdf5; }
+      .small { font: 400 13px Arial, sans-serif; fill: #b7d3c7; }
+      .caption { font: 700 12px Arial, sans-serif; fill: #7dd3c0; letter-spacing: 1px; }
+      .flow { fill: none; stroke: #5eead4; stroke-width: 2.25; marker-end: url(#arrow); }
+      .flow-muted { fill: none; stroke: #67e8f9; stroke-width: 1.75; stroke-dasharray: 6 6; marker-end: url(#arrow); }
+      .flow-label { font: 600 12px Arial, sans-serif; fill: #b9ead9; }
+    </style>
+  </defs>
+  <rect width="1400" height="790" rx="20" fill="url(#bg)"/>
+  <text x="58" y="70" class="heading">Warden system architecture</text>
+  <text x="58" y="98" class="sub">Governed asynchronous Gemini agent operations on Google Cloud</text>
+  <line x1="58" y1="124" x2="1342" y2="124" stroke="#24483c"/>
+
+  <rect x="58" y="165" width="218" height="458" rx="16" class="group"/>
+  <text x="82" y="202" class="caption">OPERATOR SURFACES</text>
+  <rect x="82" y="228" width="170" height="84" rx="10" class="node"/>
+  <text x="102" y="260" class="label">Dashboard</text><text x="102" y="284" class="small">Approval and audit UI</text>
+  <rect x="82" y="334" width="170" height="84" rx="10" class="node"/>
+  <text x="102" y="366" class="label">CLI and API</text><text x="102" y="390" class="small">Operator dispatch</text>
+  <rect x="82" y="440" width="170" height="132" rx="10" class="node-dark"/>
+  <text x="102" y="472" class="label">Verified identity</text><text x="102" y="496" class="small">Cloud Run OIDC or IAP</text><text x="102" y="520" class="small">Local mode stays isolated</text>
+
+  <rect x="318" y="165" width="248" height="458" rx="16" class="group"/>
+  <text x="342" y="202" class="caption">GEMINI ADK FLEET</text>
+  <rect x="342" y="228" width="200" height="82" rx="10" class="node-blue"/>
+  <text x="362" y="260" class="label">Fleet lead</text><text x="362" y="284" class="small">Gemini 3.7 Flash coordinator</text>
+  <rect x="342" y="337" width="200" height="62" rx="10" class="node"/>
+  <text x="362" y="364" class="label">Resource auditor</text><text x="362" y="385" class="small">Read-only telemetry</text>
+  <rect x="342" y="418" width="200" height="62" rx="10" class="node"/>
+  <text x="362" y="445" class="label">Provisioner</text><text x="362" y="466" class="small">Human-gated spend</text>
+  <rect x="342" y="499" width="200" height="62" rx="10" class="node"/>
+  <text x="362" y="526" class="label">Lifecycle manager</text><text x="362" y="547" class="small">Human-gated teardown</text>
+
+  <rect x="608" y="165" width="270" height="458" rx="16" class="gateway"/>
+  <text x="632" y="202" class="caption" fill="#d1fae5">WARDEN GOVERNANCE GATEWAY</text>
+  <rect x="632" y="228" width="222" height="82" rx="10" fill="#062b22" stroke="#99f6e4"/>
+  <text x="652" y="260" class="label">WardenPlugin</text><text x="652" y="284" class="small">Runner-level interception</text>
+  <rect x="632" y="337" width="104" height="104" rx="10" class="node-dark"/>
+  <text x="648" y="368" class="label">Policy</text><text x="648" y="390" class="small">47 rules</text><text x="648" y="412" class="small">budget + TTL</text>
+  <rect x="750" y="337" width="104" height="104" rx="10" class="node-dark"/>
+  <text x="766" y="368" class="label">Armor</text><text x="766" y="390" class="small">prompt screen</text><text x="766" y="412" class="small">DLP egress</text>
+  <rect x="632" y="469" width="222" height="92" rx="10" class="node-dark"/>
+  <text x="652" y="500" class="label">Decision outcomes</text><text x="652" y="523" class="small">Allow · deny · park for approval</text>
+
+  <rect x="920" y="165" width="216" height="458" rx="16" class="group"/>
+  <text x="944" y="202" class="caption">DURABLE STATE</text>
+  <rect x="944" y="228" width="168" height="84" rx="10" class="node"/>
+  <text x="964" y="260" class="label">Workflows</text><text x="964" y="284" class="small">Async resume state</text>
+  <rect x="944" y="334" width="168" height="84" rx="10" class="node"/>
+  <text x="964" y="366" class="label">Approvals</text><text x="964" y="390" class="small">Single-use grants</text>
+  <rect x="944" y="440" width="168" height="62" rx="10" class="node"/>
+  <text x="964" y="467" class="label">Memory Bank</text><text x="964" y="488" class="small">Identity scoped</text>
+  <rect x="944" y="521" width="168" height="62" rx="10" class="node"/>
+  <text x="964" y="548" class="label">SHA-256 ledger</text><text x="964" y="569" class="small">Tamper evident</text>
+
+  <rect x="1178" y="165" width="164" height="458" rx="16" class="group"/>
+  <text x="1202" y="202" class="caption">GOOGLE CLOUD</text>
+  <rect x="1202" y="228" width="116" height="68" rx="10" class="node-blue"/>
+  <text x="1218" y="257" class="label">Cloud Run</text><text x="1218" y="278" class="small">Control plane</text>
+  <rect x="1202" y="318" width="116" height="68" rx="10" class="node-blue"/>
+  <text x="1218" y="347" class="label">Firestore</text><text x="1218" y="368" class="small">State + audit</text>
+  <rect x="1202" y="408" width="116" height="68" rx="10" class="node-blue"/>
+  <text x="1218" y="437" class="label">Cloud Tasks</text><text x="1218" y="458" class="small">OIDC resume</text>
+  <rect x="1202" y="498" width="116" height="68" rx="10" class="node-blue"/>
+  <text x="1218" y="527" class="label">Cloud Trace</text><text x="1218" y="548" class="small">OpenTelemetry</text>
+
+  <path d="M276 270 H318" class="flow"/><text x="280" y="252" class="flow-label">goal</text>
+  <path d="M566 270 H608" class="flow"/><text x="562" y="252" class="flow-label">tool intent</text>
+  <path d="M878 270 H920" class="flow"/><text x="862" y="252" class="flow-label">park</text>
+  <path d="M878 514 H920" class="flow-muted"/><text x="870" y="550" class="flow-label">audit</text>
+  <path d="M1136 270 H1178" class="flow"/><text x="1128" y="252" class="flow-label">operate</text>
+  <path d="M1028 312 V334" class="flow"/>
+  <path d="M1028 418 V440" class="flow"/>
+  <path d="M1028 502 V521" class="flow"/>
+  <path d="M1260 296 V318" class="flow"/>
+  <path d="M1260 386 V408" class="flow"/>
+  <path d="M1260 476 V498" class="flow"/>
+
+  <rect x="58" y="670" width="1284" height="70" rx="12" fill="#0a1d18" stroke="#295b4a"/>
+  <text x="86" y="700" class="label">Enforcement invariant</text>
+  <text x="86" y="725" class="small">Every infrastructure tool intent passes through WardenPlugin before execution. Policy violations are denied, high-impact actions park for human approval, and every decision is recorded.</text>
+</svg>

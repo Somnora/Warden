@@ -539,9 +539,9 @@
         async function verifyChain() {
             const res = await fetchJSON("/audit/verify");
             if (res && res.ok) {
-                alert(`✅ Cryptographic Audit Chain Validated!\nRecords verified: ${res.checked_records}\nAll SHA-256 links intact.`);
+                alert(`Cryptographic audit chain validated.\nRecords verified: ${res.checked_records}\nAll SHA-256 links intact.`);
             } else {
-                alert(`❌ Chain verification failed: ${res ? res.detail : 'Unknown error'}`);
+                alert(`Chain verification failed: ${res ? res.detail : 'Unknown error'}`);
             }
         }
 
@@ -604,7 +604,7 @@
                         <div class="p-2.5 bg-gray-900 border ${r.deflected ? 'border-gray-800' : 'border-red-500/50'} rounded-lg">
                             <div class="flex justify-between items-center text-xs">
                                 <span class="text-white font-semibold">${r.vector_name}</span>
-                                <span class="${r.deflected ? 'text-emerald-400' : 'text-rose-400'} font-bold">${r.deflected ? 'DEFLECTED ✅' : 'BREACHED ❌'}</span>
+                                <span class="${r.deflected ? 'text-emerald-400' : 'text-rose-400'} font-bold">${r.deflected ? 'DEFLECTED' : 'BREACHED'}</span>
                             </div>
                             <div class="text-[11px] text-gray-400 mt-1">${r.detail}</div>
                         </div>
