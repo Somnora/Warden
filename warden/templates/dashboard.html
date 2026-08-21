@@ -12,45 +12,62 @@
         :root { color-scheme: dark; }
         body {
             background:
-                radial-gradient(circle at 8% -20%, rgba(16, 185, 129, 0.15), transparent 34rem),
-                radial-gradient(circle at 98% 0%, rgba(8, 145, 178, 0.12), transparent 30rem),
-                #07110f;
-            color: #e7f2ee;
+                radial-gradient(circle at 7% -15%, rgba(171, 143, 88, 0.12), transparent 32rem),
+                radial-gradient(circle at 96% 0%, rgba(95, 132, 108, 0.12), transparent 30rem),
+                #111312;
+            color: #f1f0ea;
             font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
         }
         .glass-panel {
-            background: linear-gradient(145deg, rgba(16, 32, 28, 0.92), rgba(8, 20, 18, 0.88));
-            backdrop-filter: blur(18px);
-            border: 1px solid rgba(167, 243, 208, 0.12);
+            background: linear-gradient(145deg, rgba(29, 33, 31, 0.97), rgba(20, 23, 22, 0.95));
+            backdrop-filter: blur(14px);
+            border: 1px solid rgba(218, 215, 201, 0.10);
             border-radius: 1rem;
-            box-shadow: 0 18px 40px rgba(0, 0, 0, 0.18);
+            box-shadow: 0 12px 32px rgba(0, 0, 0, 0.22);
         }
         .glow-border {
-            box-shadow: 0 0 28px rgba(16, 185, 129, 0.16);
+            box-shadow: 0 0 28px rgba(203, 107, 89, 0.18);
         }
         .chain-block {
             transition: all 0.2s ease-in-out;
         }
         .chain-block:hover {
             transform: translateY(-2px);
-            border-color: rgba(52, 211, 153, 0.45);
+            border-color: rgba(132, 170, 143, 0.52);
         }
         /* Legacy utility aliases retain the compact dashboard markup while
-           rendering in Warden's graphite, emerald, and cyan palette. */
-        .bg-indigo-600 { background-color: #047857 !important; }
-        .bg-indigo-500 { background-color: #059669 !important; }
-        .bg-indigo-500\/20 { background-color: rgba(16, 185, 129, .14) !important; }
-        .bg-indigo-600\/20 { background-color: rgba(16, 185, 129, .14) !important; }
-        .hover\:bg-indigo-500:hover { background-color: #10b981 !important; }
-        .text-indigo-400, .text-indigo-300 { color: #6ee7b7 !important; }
-        .border-indigo-500\/30, .border-indigo-500 { border-color: rgba(52, 211, 153, .35) !important; }
-        .bg-purple-500\/10 { background-color: rgba(34, 211, 238, .10) !important; }
-        .text-purple-400, .text-purple-300 { color: #67e8f9 !important; }
-        .border-purple-500\/20 { border-color: rgba(34, 211, 238, .22) !important; }
-        .text-gray-400 { color: #8ca29a !important; }
-        .text-gray-500 { color: #6f867d !important; }
-        .border-gray-800 { border-color: rgba(148, 163, 184, .13) !important; }
-        .bg-gray-900\/60, .bg-gray-900\/80, .bg-gray-900\/90 { background-color: rgba(3, 12, 10, .58) !important; }
+           rendering in Warden's graphite, sage, and brass palette. */
+        .bg-indigo-600 { background-color: #507760 !important; }
+        .bg-indigo-500 { background-color: #668b71 !important; }
+        .bg-indigo-500\/20, .bg-indigo-600\/20 { background-color: rgba(115, 151, 125, .16) !important; }
+        .hover\:bg-indigo-500:hover { background-color: #789b80 !important; }
+        .text-indigo-400, .text-indigo-300 { color: #b7d0bc !important; }
+        .border-indigo-500\/30, .border-indigo-500 { border-color: rgba(132, 170, 143, .42) !important; }
+        .bg-purple-500\/10, .bg-cyan-500\/10 { background-color: rgba(181, 146, 83, .12) !important; }
+        .text-purple-400, .text-purple-300, .text-cyan-300, .text-blue-400 { color: #d2b47a !important; }
+        .border-purple-500\/20, .border-cyan-500\/30 { border-color: rgba(201, 167, 101, .28) !important; }
+        .text-gray-200 { color: #e3e0d7 !important; }
+        .text-gray-300 { color: #cbc9c1 !important; }
+        .text-gray-400 { color: #aaa9a1 !important; }
+        .text-gray-500 { color: #82847d !important; }
+        .border-gray-800 { border-color: rgba(218, 215, 201, .12) !important; }
+        .border-gray-700 { border-color: rgba(218, 215, 201, .20) !important; }
+        .bg-gray-900\/60, .bg-gray-900\/80, .bg-gray-900\/90 { background-color: rgba(14, 16, 15, .72) !important; }
+        .bg-gray-800 { background-color: #242826 !important; }
+        .bg-gray-700, .hover\:bg-gray-700:hover { background-color: #343936 !important; }
+        .focus\:border-indigo-500:focus { border-color: #8cac92 !important; }
+        .bg-emerald-600 { background-color: #507760 !important; }
+        .bg-emerald-500 { background-color: #668b71 !important; }
+        .bg-emerald-500\/10, .bg-emerald-500\/20 { background-color: rgba(115, 151, 125, .13) !important; }
+        .hover\:bg-emerald-500:hover, .hover\:bg-emerald-500\/20:hover { background-color: #789b80 !important; }
+        .text-emerald-100, .text-emerald-300, .text-emerald-400 { color: #b7d0bc !important; }
+        .border-emerald-500\/20, .border-emerald-500\/30 { border-color: rgba(132, 170, 143, .34) !important; }
+        .bg-amber-500\/10, .bg-amber-500\/20 { background-color: rgba(181, 146, 83, .13) !important; }
+        .text-amber-300, .text-amber-400 { color: #d2b47a !important; }
+        .border-amber-500\/20, .border-amber-500\/30 { border-color: rgba(201, 167, 101, .34) !important; }
+        .text-rose-400 { color: #dc9a8c !important; }
+        .bg-rose-500\/10 { background-color: rgba(177, 84, 70, .13) !important; }
+        .border-rose-500\/20 { border-color: rgba(206, 113, 98, .34) !important; }
     </style>
 </head>
 <body class="min-h-screen p-4 md:p-8">

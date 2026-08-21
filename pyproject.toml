@@ -1,6 +1,6 @@
 [project]
 name = "warden"
-version = "0.2.1"
+version = "0.2.2"
 description = "A governed control plane for agent fleets that operate real GPU infrastructure on Google Cloud."
 license = "Apache-2.0"
 requires-python = ">=3.11"

@@ -2,29 +2,29 @@
   <title id="title">Warden system architecture</title>
   <desc id="desc">Operators use the Warden dashboard and CLI to dispatch a Gemini ADK fleet. Every tool intent passes through the Warden governance gateway, which connects durable state and Google Cloud services.</desc>
   <defs>
-    <linearGradient id="bg" x1="0" x2="1" y1="0" y2="1"><stop stop-color="#071310"/><stop offset="1" stop-color="#0b1820"/></linearGradient>
-    <linearGradient id="gateway" x1="0" x2="1"><stop stop-color="#064e3b"/><stop offset="1" stop-color="#075985"/></linearGradient>
-    <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="#5eead4"/></marker>
+    <linearGradient id="bg" x1="0" x2="1" y1="0" y2="1"><stop stop-color="#101211"/><stop offset="1" stop-color="#1a1c19"/></linearGradient>
+    <linearGradient id="gateway" x1="0" x2="1"><stop stop-color="#26352d"/><stop offset="1" stop-color="#31443a"/></linearGradient>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="#b7b58b"/></marker>
     <style>
-      .heading { font: 700 28px Arial, sans-serif; fill: #f0fdf4; }
-      .sub { font: 400 15px Arial, sans-serif; fill: #a7c2b5; }
-      .group { fill: #0d211b; stroke: #295b4a; stroke-width: 1.5; }
-      .gateway { fill: url(#gateway); stroke: #5eead4; stroke-width: 2; }
-      .node { fill: #102b23; stroke: #39705b; stroke-width: 1.2; }
-      .node-blue { fill: #102a35; stroke: #3b82a0; stroke-width: 1.2; }
-      .node-dark { fill: #0a1714; stroke: #2b5044; stroke-width: 1.2; }
-      .label { font: 700 16px Arial, sans-serif; fill: #ecfdf5; }
-      .small { font: 400 13px Arial, sans-serif; fill: #b7d3c7; }
-      .caption { font: 700 12px Arial, sans-serif; fill: #7dd3c0; letter-spacing: 1px; }
-      .flow { fill: none; stroke: #5eead4; stroke-width: 2.25; marker-end: url(#arrow); }
-      .flow-muted { fill: none; stroke: #67e8f9; stroke-width: 1.75; stroke-dasharray: 6 6; marker-end: url(#arrow); }
-      .flow-label { font: 600 12px Arial, sans-serif; fill: #b9ead9; }
+      .heading { font: 700 28px Arial, sans-serif; fill: #f4f3ed; }
+      .sub { font: 400 15px Arial, sans-serif; fill: #c3c0b8; }
+      .group { fill: #1a201d; stroke: #465249; stroke-width: 1.5; }
+      .gateway { fill: url(#gateway); stroke: #9cb6a2; stroke-width: 2; }
+      .node { fill: #242b27; stroke: #587260; stroke-width: 1.2; }
+      .node-blue { fill: #292b23; stroke: #9a8a5c; stroke-width: 1.2; }
+      .node-dark { fill: #171a18; stroke: #465249; stroke-width: 1.2; }
+      .label { font: 700 16px Arial, sans-serif; fill: #f1f0ea; }
+      .small { font: 400 13px Arial, sans-serif; fill: #cccac1; }
+      .caption { font: 700 12px Arial, sans-serif; fill: #b8cdbb; letter-spacing: 1px; }
+      .flow { fill: none; stroke: #b7b58b; stroke-width: 2.25; marker-end: url(#arrow); }
+      .flow-muted { fill: none; stroke: #8aa991; stroke-width: 1.75; stroke-dasharray: 6 6; marker-end: url(#arrow); }
+      .flow-label { font: 600 12px Arial, sans-serif; fill: #d8d1ad; }
     </style>
   </defs>
   <rect width="1400" height="790" rx="20" fill="url(#bg)"/>
   <text x="58" y="70" class="heading">Warden system architecture</text>
   <text x="58" y="98" class="sub">Governed asynchronous Gemini agent operations on Google Cloud</text>
-  <line x1="58" y1="124" x2="1342" y2="124" stroke="#24483c"/>
+  <line x1="58" y1="124" x2="1342" y2="124" stroke="#465249"/>
 
   <rect x="58" y="165" width="218" height="458" rx="16" class="group"/>
   <text x="82" y="202" class="caption">OPERATOR SURFACES</text>
@@ -47,8 +47,8 @@
   <text x="362" y="526" class="label">Lifecycle manager</text><text x="362" y="547" class="small">Human-gated teardown</text>
 
   <rect x="608" y="165" width="270" height="458" rx="16" class="gateway"/>
-  <text x="632" y="202" class="caption" fill="#d1fae5">WARDEN GOVERNANCE GATEWAY</text>
-  <rect x="632" y="228" width="222" height="82" rx="10" fill="#062b22" stroke="#99f6e4"/>
+  <text x="632" y="202" class="caption" fill="#e2dfc7">WARDEN GOVERNANCE GATEWAY</text>
+  <rect x="632" y="228" width="222" height="82" rx="10" fill="#1c2923" stroke="#b3c5b6"/>
   <text x="652" y="260" class="label">WardenPlugin</text><text x="652" y="284" class="small">Runner-level interception</text>
   <rect x="632" y="337" width="104" height="104" rx="10" class="node-dark"/>
   <text x="648" y="368" class="label">Policy</text><text x="648" y="390" class="small">47 rules</text><text x="648" y="412" class="small">budget + TTL</text>
@@ -91,7 +91,7 @@
   <path d="M1260 386 V408" class="flow"/>
   <path d="M1260 476 V498" class="flow"/>
 
-  <rect x="58" y="670" width="1284" height="70" rx="12" fill="#0a1d18" stroke="#295b4a"/>
+  <rect x="58" y="670" width="1284" height="70" rx="12" fill="#1b201d" stroke="#465249"/>
   <text x="86" y="700" class="label">Enforcement invariant</text>
   <text x="86" y="725" class="small">Every infrastructure tool intent passes through WardenPlugin before execution. Policy violations are denied, high-impact actions park for human approval, and every decision is recorded.</text>
 </svg>
