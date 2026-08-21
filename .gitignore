@@ -11,3 +11,6 @@ build/
 *.log
 .firecrawl/
 2026-08-20-145342-i-want-to-enter-this-hackathon-are-any-of-my-cur.txt
+build/
+dist/
+*.spec

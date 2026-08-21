@@ -218,6 +218,24 @@ warden server --port 8000
 ```
 Open **`http://localhost:8000`** in your browser to view the real-time Glassmorphism Dashboard.
 
+### Desktop app (no terminal or browser URL)
+
+The desktop launcher starts Warden on a private loopback port and opens the
+dashboard in a native app window. It defaults to safe `mock` mode; live Cloud
+Run settings remain opt-in through the existing environment variables.
+
+```bash
+# macOS (Apple Silicon): produces dist/Warden-macOS-arm64.dmg
+bash scripts/build_macos_dmg.sh
+
+# Windows: produces dist/Warden.exe
+powershell -ExecutionPolicy Bypass -File scripts/build_windows.ps1
+```
+
+Tagged GitHub releases build both artifacts automatically. These packages are
+unsigned until an Apple Developer ID and Windows code-signing certificate are
+configured, so Gatekeeper or SmartScreen may show a first-launch warning.
+
 ---
 
 ## ☁️ Deploy to Google Cloud Run
