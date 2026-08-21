@@ -1,0 +1,13 @@
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.coverage
+htmlcov/
+dist/
+build/
+*.egg-info/
+.DS_Store
+*.log
+.firecrawl/
+2026-08-20-145342-i-want-to-enter-this-hackathon-are-any-of-my-cur.txt

@@ -1,0 +1,28 @@
+steps:
+  # 1. Build the container image
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['build', '-t', 'gcr.io/$PROJECT_ID/warden-control-plane:$COMMIT_SHA', '.']
+
+  # 2. Push image to Google Container Registry / Artifact Registry
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'gcr.io/$PROJECT_ID/warden-control-plane:$COMMIT_SHA']
+
+  # 3. Deploy to Google Cloud Run
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: gcloud
+    args:
+      - 'run'
+      - 'deploy'
+      - 'warden-control-plane'
+      - '--image'
+      - 'gcr.io/$PROJECT_ID/warden-control-plane:$COMMIT_SHA'
+      - '--region'
+      - 'us-central1'
+      - '--platform'
+      - 'managed'
+      - '--set-env-vars'
+      - 'WARDEN_MODE=mock,GOOGLE_CLOUD_PROJECT=$PROJECT_ID,WARDEN_TASK_QUEUE=warden-resume,WARDEN_TASK_LOCATION=us-central1'
+      - '--max-instances=1'
+
+images:
+  - 'gcr.io/$PROJECT_ID/warden-control-plane:$COMMIT_SHA'

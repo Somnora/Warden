@@ -1,0 +1,105 @@
+# Warden fleet policy.
+#
+# This file is the whole contract. An agent in this fleet cannot reach
+# infrastructure except through a rule written here. There is no implicit
+# allow: an action with no matching rule is denied and logged as UNGOVERNED.
+
+version: 1
+fleet: warden-demo
+
+# Hard ceilings evaluated against the live ledger before every spending action.
+budget:
+  max_usd_per_run: 25.00
+  max_usd_per_day: 100.00
+  max_concurrent_instances: 2
+  # Every launch must carry a teardown deadline. No exceptions.
+  require_max_lifetime_minutes: true
+  max_lifetime_ceiling_minutes: 180
+
+# Where compute is allowed to exist.
+placement:
+  allowed_providers: [gcp]
+  allowed_regions:
+    - us-west1
+    - us-central1
+  allowed_machine_types:
+    - a2-highgpu-1g
+    - g2-standard-8
+    - g2-standard-12
+
+# Per-tool disposition (All 47 Manifold MCP tools governed):
+#   allow    - execute, record to ledger
+#   approve  - suspend, require a human decision, then record both
+#   deny     - refuse, record the attempt
+tools:
+  # -- Onboarding & Documentation (Free / Read-Only) --
+  get_skill:                   allow
+  get_work_log:                allow
+
+  # -- Observation & Discovery (Free / Read-Only) --
+  list_instances:              allow
+  list_launch_options:         allow
+  get_launch_status:           allow
+  wait_for_launch:             allow
+  list_templates:              allow
+  get_job_status:              allow
+  get_job_logs:                allow
+  stream_job_logs:             allow
+  stream_task_events:          allow
+  list_filesystems:            allow
+  list_volumes:                allow
+  list_persistent_files:       allow
+  get_spend:                   allow
+  get_spend_breakdown:         allow
+  list_clusters:               allow
+  get_cluster_details:         allow
+  list_local_subagent_models:  allow
+  get_swarm_status:            allow
+  get_pending_approvals:       allow
+  get_agent_context:           allow
+  list_research_keys:          allow
+
+  # -- Governed Execution & File Ops --
+  run_command:                 allow
+  run_job:                     allow
+  run_detached:                allow
+  detached_status:             allow
+  generate_training_config:    allow
+  upload_file:                 allow
+  download_file:               allow
+  sync_outputs:                allow
+  agent_handshake:             allow
+  update_agent_context:        allow
+  dispatch_local_subagent:     allow
+
+  # -- Spending & Provisioning (Human Sign-Off Required) --
+  launch_gpu:                  approve
+  launch_cluster:              approve
+  create_filesystem:           approve
+  save_template:               approve
+  set_keep_alive:              approve
+  register_endpoint:           approve
+
+  # -- Destructive Actions (Human Sign-Off Required) --
+  terminate_instance:          approve
+  terminate_cluster:           approve
+  delete_template:             approve
+
+  # -- Enterprise Prohibited / Zero-Trust Vault Protection --
+  # Under NO prompt or agent role may an autonomous agent execute these:
+  set_research_key:            deny
+  get_research_key:            deny
+  deregister_endpoint:         deny
+  decide_approval:             deny
+
+# Data handling & Egress DLP Redaction
+egress:
+  redact_patterns:
+    - name: gcp_service_account_key
+      pattern: '"private_key"\s*:\s*"-----BEGIN'
+    - name: ssh_private_key
+      pattern: '-----BEGIN (RSA|OPENSSH|EC) PRIVATE KEY-----'
+    - name: bearer_token
+      pattern: '(?i)bearer\s+[A-Za-z0-9._\-]{20,}'
+    - name: gcp_api_key
+      pattern: 'AIza[0-9A-Za-z_\-]{35}'
