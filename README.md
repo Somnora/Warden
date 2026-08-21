@@ -84,9 +84,29 @@ flowchart TD
 | **Decision-ready approvals** | Preflight card | Operators see target placement, reserved cost, TTL, policy rules, and rollback plan before approving. |
 | **Operator identity** | Cloud Run OIDC or IAP identity | Approval attribution is derived from a verified identity, never a browser-supplied `approver` field. |
 | **Efficient agent transfers** | ADK context cache | Gemini 3.7 cache reuse is configured for long fleet sessions; resumability is enabled at the App layer. |
+| **Agent Registry** | Versioned catalog endpoint | Every approved ADK specialist is discoverable with owner, lifecycle, capabilities, and access tier. |
+| **Memory Bank** | Identity-scoped Firestore context | Operators can save DLP-sanitized context that survives sessions for 30 days without crossing tenant boundaries. |
+| **Model Armor guardrail** | Optional inline template screening | A configured Google Cloud Model Armor template blocks unsafe/injected prompts before Warden forwards them to Gemini. |
+| **OpenTelemetry observability** | ADK Cloud Trace exporter | Live deployments export workflow, model, tool, and policy activity to Google Cloud Trace. |
 | **Egress DLP Redaction** | Regex redaction in `after_tool_callback` | Automatically scrubs leaked Google API keys, Service Account private keys, and SSH credentials before observations reach Gemini. |
 | **Cryptographic Audit Chain** | SHA-256 Hash Chain with Firestore | Every action seals against the previous record hash. Any deletion, alteration, or sequence reordering is mathematically detected. |
 | **Red-Team Benchmark** | Automated adversarial penetration testing | 5-vector attack simulation proving enterprise resiliency against privilege escalation, rogue teardown, and budget exhaustion. |
+
+---
+
+## 🏆 Fortified Enterprise Fleet — Criteria Coverage
+
+| Hackathon requirement | Warden evidence |
+| :--- | :--- |
+| **Agent Registry** | `GET /registry/agents` exposes a versioned catalog of the four approved ADK agents, including owner, lifecycle, access tier, and capabilities. |
+| **Long-running Agent Runtime** | A Firestore workflow records a run through `running → waiting_for_approval → queued → completed`; Cloud Tasks resumes it asynchronously with OIDC. |
+| **Memory Bank** | `POST /memory` stores DLP-sanitized, identity-partitioned operator context for 30 days; only that same verified identity can retrieve or reuse it. |
+| **Agent Identity + Gateway** | Cloud Run OIDC/IAP derives the human identity. The runner-level `WardenPlugin` is the universal Agent Gateway: no agent may bypass its policy evaluation. |
+| **Model Armor** | When `WARDEN_MODEL_ARMOR_TEMPLATE` is configured, each incoming prompt is screened by Google Cloud Model Armor before it reaches Gemini; a match or outage fails closed. |
+| **OpenTelemetry Observability** | ADK Cloud Trace exporters are enabled in a live deployment, and Warden adds workflow spans around state transitions and exceptions. |
+| **Compliance + sovereignty** | Declarative placement, budget, TTL, approval, DLP, and append-only SHA-256 ledger controls are enforced before a provider call—not merely described in a prompt. |
+
+For the strongest submission proof, record the Cloud Run service page and Cloud Trace Explorer during the demo, then show the matching workflow, approval, and audit records in Warden.
 
 ---
 
@@ -235,6 +255,22 @@ powershell -ExecutionPolicy Bypass -File scripts/build_windows.ps1
 Tagged GitHub releases build both artifacts automatically. These packages are
 unsigned until an Apple Developer ID and Windows code-signing certificate are
 configured, so Gatekeeper or SmartScreen may show a first-launch warning.
+
+### Production security and observability switches
+
+`scripts/deploy_cloud_run.sh` enables Cloud Trace by default. To add Google
+Model Armor screening, first create a Model Armor template, then deploy with:
+
+```bash
+export WARDEN_MODE=live
+export WARDEN_MODEL_ARMOR_TEMPLATE=warden-enterprise-template
+export WARDEN_MODEL_ARMOR_LOCATION=us-central1
+bash scripts/deploy_cloud_run.sh
+```
+
+The deployment grants the runtime service account only the Model Armor User
+role when a template is configured. A screening match or unavailable Model
+Armor call fails closed, so a prompt is never forwarded uninspected.
 
 ---
 

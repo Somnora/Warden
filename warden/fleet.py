@@ -32,6 +32,7 @@ from warden.policy.plugin import WardenPlugin
 from warden.tools.factory import create_toolset
 from warden.tools.definitions import InfrastructureBackend
 from warden.workflow_context import begin_workflow, finish_workflow
+from warden.telemetry import configure_cloud_trace
 
 log = logging.getLogger("warden.fleet")
 
@@ -139,6 +140,7 @@ class WardenFleetRuntime:
     run_id: str
     toolsets: dict[str, list[FunctionTool]] = field(default_factory=dict)
     app: App | None = None
+    cloud_trace_enabled: bool = False
 
 
 def initialize_fleet_runtime(
@@ -155,6 +157,7 @@ def initialize_fleet_runtime(
     api_token: str | None = None,
 ) -> WardenFleetRuntime:
     """Initialize a complete governed Warden fleet runtime."""
+    cloud_trace_enabled = configure_cloud_trace()
     pol = policy or Policy.load()
     led = ledger or MemoryLedger()
     appr = approvals or MemoryApprovals()
@@ -216,6 +219,7 @@ def initialize_fleet_runtime(
         run_id=run_id,
         toolsets=toolsets,
         app=app,
+        cloud_trace_enabled=cloud_trace_enabled,
     )
 
 

@@ -24,8 +24,13 @@ def test_health_endpoint(client):
     assert len(data["subagents"]) == 3
     assert data["ledger"] == "MemoryLedger"
     assert data["approval_store"] == "MemoryApprovals"
+    assert data["deployment"] == "local"
     assert data["workflow_store"] == "MemoryWorkflowStore"
     assert data["context_cache"]["min_tokens"] == 4096
+    assert data["agent_catalog_version"] == "0.2.0"
+    assert data["cloud_trace"] == "not_configured"
+    assert data["model_armor"] == "not_configured"
+    assert client.get("/static/dashboard.css").status_code == 200
 
 
 def test_policy_endpoint(client):

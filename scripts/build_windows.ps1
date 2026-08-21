@@ -20,6 +20,7 @@ if ((Test-Path $Build) -or (Test-Path (Join-Path $Dist "Warden.exe"))) {
     --windowed `
     --name Warden `
     --add-data "$Root\warden\templates;warden\templates" `
+    --add-data "$Root\warden\static;warden\static" `
     --add-data "$Root\warden\policy\policy.yaml;warden\policy" `
     --collect-all warden `
     --paths $Root `

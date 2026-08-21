@@ -25,6 +25,7 @@ fi
   --name Warden \
   --osx-bundle-identifier com.somnora.warden \
   --add-data "${ROOT_DIR}/warden/templates:warden/templates" \
+  --add-data "${ROOT_DIR}/warden/static:warden/static" \
   --add-data "${ROOT_DIR}/warden/policy/policy.yaml:warden/policy" \
   --collect-all warden \
   --paths "${ROOT_DIR}" \
