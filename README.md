@@ -122,6 +122,8 @@ Warden serves an interactive operator dashboard directly at `http://localhost:80
 - **Tamper-Evident SHA-256 Audit Chain:** Live audit blocks with one-click cryptographic validation and downloadable JSON evidence bundles.
 - **Interactive Fleet Terminal:** Dispatch prompts directly to the governed fleet with a Gemini model selector.
 - **Mission Command Center:** Create and approve a bounded outcome contract, monitor progress/cost/actions and resource TTLs, collect artifacts, revoke authority, and verify cleanup receipts.
+- **Live mission HUD:** Remaining dollars, actions, and TTL tick from the real envelope while the fleet works. Labels are "left to spend", "actions left", and "time left". Approve is the one-click resume for a parked call.
+- **Shadow replay:** Load a recorded fleet transcript and see what live policy would have allowed, parked, or denied — plus rate-card dollars that would have been stopped. Observational only; enforcement and fail-closed stay off.
 - **Policy Lab:** Compare Creator Safe, Studio Burst, and Enterprise Production templates; simulate an action sequence with zero provider calls; inspect digest-bound replay evidence before a policy rollout.
 - **Cloud Evidence:** Collect and compare asset configuration, Security Command Center findings, and billing-export totals; see chain verification and retention-lock status at a glance.
 
@@ -159,6 +161,8 @@ Warden/
 │   ├── policy/
 │   │   ├── engine.py         # Pure zero-trust policy evaluation and rate card
 │   │   ├── preview.py        # Side-effect-free simulation and evidence-bound replay
+│   │   ├── shadow.py         # Observational transcript replay (enforcement off)
+│   │   ├── fixtures/shadow_transcript.json
 │   │   ├── templates.py      # Versioned Creator, Studio, and Enterprise policy profiles
 │   │   ├── approvals.py      # Approval store and operator decision protocol
 │   │   ├── plugin.py         # Google ADK BasePlugin interceptor
@@ -175,6 +179,7 @@ Warden/
     ├── test_policy.py        # Zero-trust policy evaluation tests
     ├── test_redteam.py       # Adversarial penetration test verification
     ├── test_server.py        # Operator API endpoint tests
+    ├── test_shadow.py        # Observational shadow replay of recorded transcripts
     └── test_workflows.py     # Workflow persistence and resume-state tests
 ```
 
@@ -202,7 +207,7 @@ pip install -e .
 pytest
 ```
 
-Expect all tests green (currently 131).
+Expect all tests green (currently 138).
 
 ### 3. Run the Adversarial Red-Team Benchmark
 

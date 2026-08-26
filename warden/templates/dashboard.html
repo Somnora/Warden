@@ -111,6 +111,41 @@
         </div>
     </header>
 
+
+    <!-- Live Mission HUD: remaining envelope from real mission/spend/ledger state -->
+    <section id="mission-hud" class="glass-panel p-4 mb-6 border border-emerald-500/20">
+        <div class="flex flex-col lg:flex-row lg:items-center gap-4">
+            <div class="flex-1 min-w-0">
+                <div class="flex items-center gap-2 mb-1">
+                    <i data-lucide="gauge" class="w-4 h-4 text-emerald-400"></i>
+                    <h2 class="text-sm font-semibold uppercase tracking-wider text-gray-400">Live Mission</h2>
+                    <span id="hud-state" class="text-[10px] uppercase tracking-wide text-gray-500">Idle</span>
+                </div>
+                <p id="hud-objective" class="text-xs text-gray-400 truncate">No live mission. Approve an envelope to fly a bounded fleet.</p>
+            </div>
+            <div class="grid grid-cols-3 gap-2 flex-1">
+                <div class="p-3 bg-gray-900/70 border border-gray-800 rounded-lg text-center">
+                    <div class="text-[10px] uppercase tracking-wide text-gray-500">left to spend</div>
+                    <div id="hud-left-spend" class="text-xl font-bold text-emerald-300 mt-0.5">—</div>
+                </div>
+                <div class="p-3 bg-gray-900/70 border border-gray-800 rounded-lg text-center">
+                    <div class="text-[10px] uppercase tracking-wide text-gray-500">actions left</div>
+                    <div id="hud-actions-left" class="text-xl font-bold text-indigo-300 mt-0.5">—</div>
+                </div>
+                <div class="p-3 bg-gray-900/70 border border-gray-800 rounded-lg text-center">
+                    <div class="text-[10px] uppercase tracking-wide text-gray-500">time left</div>
+                    <div id="hud-time-left" class="text-xl font-bold text-amber-300 mt-0.5 font-mono">—</div>
+                </div>
+            </div>
+            <div id="hud-approve-wrap" class="hidden w-full lg:w-56">
+                <button data-action="ticket-approve" id="hud-approve-btn" class="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-bold rounded-xl shadow-lg flex items-center justify-center gap-2">
+                    <i data-lucide="check" class="w-4 h-4"></i> Approve
+                </button>
+                <p class="mt-1 text-[10px] text-center text-gray-500">Resumes the parked call. One click.</p>
+            </div>
+        </div>
+    </section>
+
     <!-- Main Grid Layout -->
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
@@ -173,6 +208,23 @@
                     </div>
                 </form>
                 <div id="policy-lab-result" class="mt-3 text-[11px] text-gray-500">Loading templates…</div>
+            </div>
+
+            <!-- Shadow Replay Card -->
+            <div class="glass-panel p-5">
+                <div class="flex items-start justify-between gap-3 mb-3">
+                    <div>
+                        <h2 class="text-sm font-semibold uppercase tracking-wider text-gray-400 flex items-center gap-2">
+                            <i data-lucide="rewind" class="w-4 h-4 text-amber-400"></i> Shadow Replay
+                        </h2>
+                        <p class="mt-1 text-[11px] text-gray-500">Replay a recorded fleet with enforcement off. See what Warden would have allowed, parked, or denied — and the rate-card dollars it would have stopped.</p>
+                    </div>
+                    <span class="text-[10px] text-amber-300 border border-amber-500/20 bg-amber-500/10 rounded px-1.5 py-0.5">Observational</span>
+                </div>
+                <button type="button" data-action="shadow-replay" class="w-full py-2 bg-amber-600 hover:bg-amber-500 text-white text-xs font-semibold rounded flex items-center justify-center gap-1.5">
+                    <i data-lucide="play" class="w-3.5 h-3.5"></i> Replay recorded fleet
+                </button>
+                <div id="shadow-replay-result" class="mt-3 text-[11px] text-gray-500">Load the bundled overnight GPU transcript. Nothing is executed.</div>
             </div>
 
             <!-- Cloud Evidence Card -->
@@ -1034,6 +1086,7 @@
             else if (action === "export-audit") exportAudit();
             else if (action === "verify-chain") verifyChain();
             else if (action === "policy-replay-manifest") showReplayManifest();
+            else if (action === "shadow-replay") runShadowReplay();
             else if (action === "collect-cloud-evidence") collectCloudEvidence();
             else if (action === "close-redteam") closeRedteamModal();
             else if (action === "mission-approve") approveMission(id);
@@ -1045,12 +1098,103 @@
             else if (action === "ticket-deny") decideTicket(id, false);
         });
 
+
+        let hudExpiresAt = null;
+        let hudApproveId = null;
+
+        function formatTimeLeft(seconds) {
+            if (seconds === null || seconds === undefined || Number.isNaN(Number(seconds))) return "—";
+            const total = Math.max(0, Math.floor(Number(seconds)));
+            const hours = Math.floor(total / 3600);
+            const minutes = Math.floor((total % 3600) / 60);
+            const secs = total % 60;
+            if (hours) return hours + "h " + String(minutes).padStart(2, "0") + "m " + String(secs).padStart(2, "0") + "s";
+            return minutes + "m " + String(secs).padStart(2, "0") + "s";
+        }
+
+        function tickHudClock() {
+            const el = document.getElementById("hud-time-left");
+            if (!el) return;
+            if (!hudExpiresAt) return;
+            const remaining = Math.max(0, Math.floor((Date.parse(hudExpiresAt) - Date.now()) / 1000));
+            el.innerText = formatTimeLeft(remaining);
+        }
+
+        async function refreshHud() {
+            const path = activeMissionId ? "/hud?mission_id=" + encodeURIComponent(activeMissionId) : "/hud";
+            const data = await fetchJSON(path);
+            if (!data) return;
+            const stateEl = document.getElementById("hud-state");
+            const objectiveEl = document.getElementById("hud-objective");
+            const spendEl = document.getElementById("hud-left-spend");
+            const actionsEl = document.getElementById("hud-actions-left");
+            const timeEl = document.getElementById("hud-time-left");
+            const wrap = document.getElementById("hud-approve-wrap");
+            const btn = document.getElementById("hud-approve-btn");
+            if (data.mission_id) activeMissionId = data.mission_id;
+            if (data.mode === "idle" || !data.mission_id) {
+                stateEl.innerText = "Idle";
+                objectiveEl.innerText = "No live mission. Approve an envelope to fly a bounded fleet.";
+                spendEl.innerText = "—";
+                actionsEl.innerText = "—";
+                timeEl.innerText = "—";
+                hudExpiresAt = null;
+            } else {
+                stateEl.innerText = data.state || "live";
+                objectiveEl.innerText = data.objective || "Bounded mission envelope is live.";
+                spendEl.innerText = data.left_to_spend_usd === null || data.left_to_spend_usd === undefined
+                    ? "—" : "$" + Number(data.left_to_spend_usd).toFixed(2);
+                actionsEl.innerText = data.actions_left === null || data.actions_left === undefined
+                    ? "—" : String(data.actions_left);
+                hudExpiresAt = data.expires_at || null;
+                timeEl.innerText = formatTimeLeft(data.time_left_seconds);
+            }
+            if (data.parked && data.parked.approval_id) {
+                hudApproveId = encodeURIComponent(data.parked.approval_id);
+                wrap.classList.remove("hidden");
+                btn.setAttribute("data-id", hudApproveId);
+            } else {
+                hudApproveId = null;
+                wrap.classList.add("hidden");
+                btn.removeAttribute("data-id");
+            }
+            lucide.createIcons();
+        }
+
+        async function runShadowReplay() {
+            const result = document.getElementById("shadow-replay-result");
+            result.innerText = "Scoring the recorded fleet with enforcement off…";
+            const report = await fetchJSON("/shadow/replay", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: "{}",
+            });
+            if (!report) {
+                result.innerText = "Shadow replay could not run.";
+                return;
+            }
+            const examples = (report.examples || []).slice(0, 4).map(example =>
+                '<div class="mt-1.5"><span class="text-amber-300">' + escapeHTML(example.summary) +
+                '</span><div class="text-gray-500">' + escapeHTML(example.reason) + '</div></div>'
+            ).join("");
+            result.innerHTML =
+                '<div class="text-sm text-white font-semibold">' + escapeHTML(report.headline) + '</div>' +
+                '<div class="mt-2 grid grid-cols-3 gap-2 text-center">' +
+                '<div class="p-2 bg-gray-900/70 rounded border border-gray-800"><span class="block text-[10px] text-gray-500">allowed</span><strong class="text-emerald-300">' + Number(report.allowed || 0) + '</strong></div>' +
+                '<div class="p-2 bg-gray-900/70 rounded border border-gray-800"><span class="block text-[10px] text-gray-500">parked</span><strong class="text-amber-300">' + Number(report.parked || 0) + '</strong></div>' +
+                '<div class="p-2 bg-gray-900/70 rounded border border-gray-800"><span class="block text-[10px] text-gray-500">denied</span><strong class="text-rose-300">' + Number(report.denied || 0) + '</strong></div>' +
+                '</div>' +
+                '<div class="mt-2 text-emerald-300">Stopped $' + Number(report.stopped_usd || 0).toFixed(2) + ' on the server-side rate card.</div>' +
+                '<div class="mt-1 text-gray-500">' + escapeHTML(report.note || "Observational only.") + '</div>' +
+                examples;
+        }
+
         async function refreshAll() {
             await Promise.all([
                 refreshHealth(), refreshSpend(), refreshApprovals(), refreshLedger(),
                 refreshWorkflow(), refreshRegistry(), refreshMemory(),
                 refreshMissions(), refreshPolicyTemplates(),
-                refreshCloudEvidence(),
+                refreshCloudEvidence(), refreshHud(),
             ]);
         }
 
@@ -1059,6 +1203,7 @@
             lucide.createIcons();
             refreshAll();
             setInterval(refreshAll, 4000);
+            setInterval(tickHudClock, 1000);
         };
     </script>
 </body>

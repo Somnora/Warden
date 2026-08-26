@@ -85,6 +85,9 @@ def test_security_headers_are_applied(client):
     dashboard = client.get("/dashboard").text
     assert "onclick=" not in dashboard
     assert "onsubmit=" not in dashboard
+    assert 'id="mission-hud"' in dashboard
+    assert "left to spend" in dashboard
+    assert 'data-action="shadow-replay"' in dashboard
 
 
 def test_approval_lifecycle_endpoints(client):
@@ -379,3 +382,100 @@ def test_approved_workflow_is_resumed_asynchronously(client, monkeypatch):
     assert teardown.status_code == 200
     assert teardown.json()["workflow"]["state"] == "waiting_for_approval"
     assert calls == [False, True, False]
+
+
+
+def test_live_mission_hud_reads_real_mission_and_spend_state(client):
+    """HUD ticks remaining envelope from mission/spend stores, not the mock turn helper."""
+    import asyncio
+
+    idle = client.get("/hud")
+    assert idle.status_code == 200
+    assert idle.json()["mode"] == "idle"
+    assert idle.json()["labels"]["remaining_usd"] == "left to spend"
+    assert idle.json()["labels"]["remaining_actions"] == "actions left"
+    assert idle.json()["labels"]["remaining_seconds"] == "time left"
+    assert idle.json()["source"] == "mission_store+spend_store+approvals+ledger"
+
+    created = client.post(
+        "/missions",
+        json={
+            "objective": "Bounded render for the HUD",
+            "allowed_tools": ["launch_gpu"],
+            "allowed_regions": ["us-west1"],
+            "allowed_machine_types": ["g2-standard-8"],
+            "max_cost_usd": 2,
+            "max_lifetime_minutes": 60,
+            "max_actions": 2,
+        },
+    )
+    assert created.status_code == 201
+    mission_id = created.json()["mission"]["mission_id"]
+    approved = client.post(f"/missions/{mission_id}/approve", json={"ttl_minutes": 30})
+    assert approved.status_code == 200
+    envelope = approved.json()["envelope"]
+    assert envelope["remaining_actions"] == 2
+    assert envelope["remaining_usd"] == pytest.approx(2.0)
+    assert envelope["remaining_seconds"] is not None
+    assert envelope["remaining_seconds"] <= 30 * 60
+    assert envelope["remaining_seconds"] > 0
+
+    hud = client.get("/hud").json()
+    assert hud["mission_id"] == mission_id
+    assert hud["state"] == "approved"
+    assert hud["left_to_spend_usd"] == pytest.approx(2.0)
+    assert hud["actions_left"] == 2
+    assert hud["expires_at"]
+    assert hud["time_left_seconds"] == envelope["remaining_seconds"]
+
+    runtime = server.get_runtime()
+    mission = asyncio.run(server.get_mission_store().get(mission_id))
+    granted = asyncio.run(
+        server.get_mission_store().authorize(
+            mission_id=mission_id,
+            run_id=mission.run_id,
+            tool="launch_gpu",
+            args={
+                "provider": "gcp",
+                "region": "us-west1",
+                "machine_type": "g2-standard-8",
+                "max_lifetime_minutes": 60,
+            },
+            cost_usd=0.85,
+        )
+    )
+    assert granted.granted is True
+
+    live = client.get(f"/hud?mission_id={mission_id}").json()
+    assert live["left_to_spend_usd"] == pytest.approx(1.15)
+    assert live["actions_left"] == 1
+    assert live["spend"]["run_usd"] == 0 or live["source"].startswith("mission_store")
+
+
+def test_hud_surfaces_parked_approval_for_one_click_resume(client):
+    import asyncio
+
+    runtime = server.get_runtime()
+    ticket_id = asyncio.run(
+        runtime.approvals.request(
+            run_id=runtime.run_id,
+            tool="launch_gpu",
+            args={"region": "us-west1"},
+            actor="infrastructure_provisioner",
+            reason="parked for a human",
+        )
+    )
+    hud = client.get("/hud").json()
+    assert hud["parked"]["approval_id"] == ticket_id
+    assert hud["parked"]["tool"] == "launch_gpu"
+
+    decided = client.post(
+        f"/approvals/{ticket_id}/decide",
+        json={"granted": True, "note": "HUD Approve"},
+        headers={"X-Warden-Operator": "lead-sre@company.com"},
+    )
+    assert decided.status_code == 200
+    assert decided.json()["status"] == "granted"
+
+    after = client.get("/hud").json()
+    assert after["parked"] is None

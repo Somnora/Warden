@@ -42,6 +42,7 @@ from warden.ledger.store import FirestoreLedger
 from warden.policy.approvals import ApprovalState, FirestoreApprovals, MemoryApprovals
 from warden.policy.engine import Policy, SpendSnapshot
 from warden.policy.preview import PreviewAction, compare_replay, simulate
+from warden.policy.shadow import ShadowCall, load_transcript, replay, replay_fixture
 from warden.policy.templates import get_template, list_templates, policy_from_template
 from warden.identity import effective_role, live_roles, local_roles, role_satisfies
 from warden.cloud_evidence import (
@@ -355,6 +356,24 @@ class PolicyReplayRequest(PolicySimulationRequest):
     """Replay actions must bind supplied arguments back to ledger evidence."""
 
 
+class ShadowCallBody(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    tool: str = Field(..., min_length=1, max_length=120)
+    args: dict[str, Any] = Field(default_factory=dict)
+    actor: str | None = Field(default=None, max_length=200)
+
+    def shadow_call(self) -> ShadowCall:
+        return ShadowCall(tool=self.tool, args=self.args, actor=self.actor)
+
+
+class ShadowReplayRequest(BaseModel):
+    """Observational replay. Empty body uses the bundled recorded transcript."""
+
+    model_config = ConfigDict(extra="forbid")
+    source: str = Field(default="fixture", pattern="^(fixture|body)$")
+    calls: list[ShadowCallBody] | None = Field(default=None, max_length=200)
+
+
 class MissionCreateRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
     objective: str = Field(..., min_length=1, max_length=20_000)
@@ -479,6 +498,8 @@ def _mission_payload(mission: Mission) -> dict[str, Any]:
         payload["envelope"]["remaining_usd"] = round(
             max(0.0, mission.contract.max_cost_usd - mission.envelope.reserved_usd), 4
         )
+        payload["envelope"]["remaining_seconds"] = _seconds_until(mission.envelope.expires_at)
+        payload["envelope"]["expires_at"] = mission.envelope.expires_at
     state_progress = {
         MissionState.DRAFT: 10,
         MissionState.APPROVED: 25,
@@ -1077,6 +1098,172 @@ async def replay_policy(
         "changes": comparison,
         "changed_count": sum(1 for item in comparison if item["changed"]),
         "final_projected_spend": asdict(final_spend),
+    }
+
+
+@app.get("/shadow/fixture")
+async def shadow_fixture(_: Operator = Depends(get_operator)) -> dict[str, Any]:
+    """Return the bundled recorded fleet transcript used for offline shadow replay."""
+    doc = load_transcript()
+    return {
+        "schema": doc.get("schema", "warden.shadow-transcript.v1"),
+        "title": doc.get("title"),
+        "source": doc.get("source", "fixture"),
+        "note": doc.get("note"),
+        "calls": doc.get("calls") or [],
+        "enforcement": "off",
+        "fail_closed": False,
+    }
+
+
+@app.post("/shadow/replay")
+async def shadow_replay(
+    body: ShadowReplayRequest, _: Operator = Depends(get_operator)
+) -> dict[str, Any]:
+    """Score a recorded transcript against live policy with enforcement teeth off."""
+    runtime = get_runtime()
+    request = body
+    if request.source == "body":
+        if not request.calls:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+                detail="Shadow replay from body requires a calls list",
+            )
+        report = replay(
+            runtime.policy,
+            [item.shadow_call() for item in request.calls],
+            title="Operator-supplied transcript",
+            source="body",
+        )
+    else:
+        report = replay_fixture(runtime.policy)
+    payload = report.payload()
+    payload["policy_fleet"] = runtime.policy.fleet
+    payload["quote_source"] = "MACHINE_HOURLY_RATES"
+    return payload
+
+
+def _hud_labels() -> dict[str, str]:
+    return {
+        "remaining_usd": "left to spend",
+        "remaining_actions": "actions left",
+        "remaining_seconds": "time left",
+        "approve": "Approve",
+    }
+
+
+async def _select_hud_mission(mission_id: str | None) -> Mission | None:
+    store = get_mission_store()
+    if mission_id:
+        return await store.get(mission_id)
+    missions = await store.list()
+    for preferred in (MissionState.RUNNING, MissionState.APPROVED, MissionState.STOPPING):
+        match = next((mission for mission in missions if mission.state is preferred), None)
+        if match is not None:
+            return match
+    return missions[0] if missions else None
+
+
+@app.get("/hud")
+async def live_mission_hud(
+    mission_id: str | None = None, _: Operator = Depends(get_operator)
+) -> dict[str, Any]:
+    """Live remaining budget, actions, and TTL from real mission/spend/ledger state."""
+    runtime = get_runtime()
+    mission = await _select_hud_mission(mission_id)
+    pending_method = getattr(runtime.approvals, "pending", None)
+    pending = list(await pending_method()) if pending_method is not None else []
+    parked = None
+    if pending:
+        ticket = pending[0]
+        parked = {
+            "approval_id": ticket.approval_id,
+            "tool": ticket.tool,
+            "reason": ticket.reason,
+            "actor": ticket.actor,
+            "expires_at": ticket.expires_at,
+        }
+
+    if _spend_store is not None:
+        if mission is not None:
+            spend_summary = await _spend_store.summary(mission.run_id)
+        else:
+            spend_summary = await _spend_store.aggregate()
+        spend_payload = {
+            "run_usd": spend_summary.run_usd,
+            "reserved_usd": spend_summary.reserved_usd,
+            "settled_usd": spend_summary.settled_usd,
+            "uncertain_usd": spend_summary.uncertain_usd,
+            "live_instances": spend_summary.live_instances,
+        }
+    else:
+        snapshot = runtime.plugin.spend
+        spend_payload = {
+            "run_usd": snapshot.run_usd,
+            "reserved_usd": snapshot.run_usd,
+            "settled_usd": 0.0,
+            "uncertain_usd": 0.0,
+            "live_instances": snapshot.live_instances,
+        }
+
+    last_ledger = None
+    records = await runtime.ledger.read()
+    if mission is not None:
+        scoped = [record for record in records if record.run_id == mission.run_id]
+        if scoped:
+            last = scoped[-1]
+            last_ledger = {
+                "tool": last.tool,
+                "outcome": last.outcome,
+                "disposition": last.disposition,
+                "ts": last.ts,
+            }
+    elif records:
+        last = records[-1]
+        last_ledger = {
+            "tool": last.tool,
+            "outcome": last.outcome,
+            "disposition": last.disposition,
+            "ts": last.ts,
+        }
+
+    labels = _hud_labels()
+    if mission is None:
+        return {
+            "mode": "idle",
+            "labels": labels,
+            "mission_id": None,
+            "state": None,
+            "left_to_spend_usd": None,
+            "actions_left": None,
+            "time_left_seconds": None,
+            "expires_at": None,
+            "parked": parked,
+            "spend": spend_payload,
+            "last_ledger": last_ledger,
+            "source": "mission_store+spend_store+approvals+ledger",
+        }
+
+    envelope = mission.envelope
+    left = round(mission.contract.max_cost_usd - (envelope.reserved_usd if envelope else 0.0), 4)
+    actions_left = (
+        max(0, mission.contract.max_actions - envelope.actions_used) if envelope else mission.contract.max_actions
+    )
+    expires_at = envelope.expires_at if envelope else None
+    return {
+        "mode": "live_mission" if mission.state in {MissionState.RUNNING, MissionState.APPROVED} else mission.state.value,
+        "labels": labels,
+        "mission_id": mission.mission_id,
+        "state": mission.state.value,
+        "objective": mission.objective[:240],
+        "left_to_spend_usd": max(0.0, left),
+        "actions_left": actions_left,
+        "time_left_seconds": _seconds_until(expires_at),
+        "expires_at": expires_at,
+        "parked": parked,
+        "spend": spend_payload,
+        "last_ledger": last_ledger,
+        "source": "mission_store+spend_store+approvals+ledger",
     }
 
 
