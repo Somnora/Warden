@@ -12,7 +12,6 @@ All agent actions are governed at the Runner level by WardenPlugin.
 from __future__ import annotations
 
 import logging
-import os
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -31,14 +30,13 @@ from warden.policy.engine import Policy, SpendSnapshot
 from warden.policy.plugin import WardenPlugin
 from warden.tools.factory import create_toolset
 from warden.tools.definitions import InfrastructureBackend
-from warden.workflow_context import begin_workflow, finish_workflow
+from warden.models import DEFAULT_MODEL, resolve_model
+from warden.missions import MissionStore
+from warden.spend import SpendStore
 from warden.telemetry import configure_cloud_trace
+from warden.workflow_context import begin_workflow, finish_workflow
 
 log = logging.getLogger("warden.fleet")
-
-# Gemini 3.7 Flash is the hackathon-approved model selected for the fleet.
-# An environment override keeps local development and future migrations simple.
-DEFAULT_MODEL = os.environ.get("WARDEN_MODEL", "gemini-3.7-flash")
 
 
 def create_auditor_agent(
@@ -73,8 +71,9 @@ def create_provisioner_agent(
             "You are the Infrastructure Provisioner in the Warden Enterprise Fleet. "
             "Your responsibility is to provision GPU compute instances, launch clusters, "
             "and submit batch jobs according to workload requirements. "
-            "MANDATORY POLICY: Always include max_lifetime_minutes and estimated_usd for every "
-            "launch. Never attempt to launch resources in unapproved regions. "
+            "MANDATORY POLICY: Always include max_lifetime_minutes and machine_type. "
+            "Warden quotes cost from the policy rate card; do not invent a cheaper estimated_usd "
+            "to bypass budget. Never attempt to launch resources in unapproved regions. "
             "Be aware that spending tools require human approval before execution."
         ),
         tools=tools or [],
@@ -141,6 +140,7 @@ class WardenFleetRuntime:
     toolsets: dict[str, list[FunctionTool]] = field(default_factory=dict)
     app: App | None = None
     cloud_trace_enabled: bool = False
+    model: str = DEFAULT_MODEL
 
 
 def initialize_fleet_runtime(
@@ -151,13 +151,16 @@ def initialize_fleet_runtime(
     backend: InfrastructureBackend | None = None,
     mode: str = "mock",
     run_id: str = "fleet-run-001",
-    model: str = DEFAULT_MODEL,
+    model: str | None = None,
     session_service: BaseSessionService | None = None,
     manifold_url: str | None = None,
     api_token: str | None = None,
+    missions: MissionStore | None = None,
+    spend_store: SpendStore | None = None,
 ) -> WardenFleetRuntime:
     """Initialize a complete governed Warden fleet runtime."""
     cloud_trace_enabled = configure_cloud_trace()
+    resolved_model = resolve_model(model)
     pol = policy or Policy.load()
     led = ledger or MemoryLedger()
     appr = approvals or MemoryApprovals()
@@ -167,45 +170,22 @@ def initialize_fleet_runtime(
         backend=backend, mode=mode, manifold_url=manifold_url, api_token=api_token
     )
 
-    auditor = create_auditor_agent(tools=toolsets["auditor"], model=model)
-    provisioner = create_provisioner_agent(tools=toolsets["provisioner"], model=model)
-    lifecycle = create_lifecycle_agent(tools=toolsets["lifecycle"], model=model)
-
-    lead = create_fleet_lead_agent(
-        sub_agents=[auditor, provisioner, lifecycle],
-        tools=toolsets["security_test"],  # exposes denied endpoints directly to test governance
-        model=model,
-    )
-
     plugin = WardenPlugin(
         policy=pol,
         ledger=led,
         approvals=appr,
         run_id=run_id,
         spend=SpendSnapshot(run_usd=0.0, day_usd=4.50, live_instances=1),
+        missions=missions,
+        spend_store=spend_store,
     )
 
-    app = App(
-        name=f"warden-{pol.fleet}",
-        root_agent=lead,
-        plugins=[plugin],
-        # Gemini 3.7 caches only prefixes at least 4096 tokens long. This
-        # configuration activates cache reuse for long-running fleet sessions
-        # without paying to cache short dashboard interactions.
-        context_cache_config=ContextCacheConfig(
-            cache_intervals=10,
-            ttl_seconds=1800,
-            min_tokens=4096,
-        ),
-        # Long-running actions are idempotently resumed by the durable Warden
-        # workflow layer after a human grant or worker retry.
-        resumability_config=ResumabilityConfig(is_resumable=True),
-    )
-
-    runner = Runner(
-        app=app,
+    lead, app, runner = _assemble_adk(
+        policy=pol,
+        plugin=plugin,
+        toolsets=toolsets,
+        model=resolved_model,
         session_service=sess,
-        auto_create_session=True,
     )
 
     return WardenFleetRuntime(
@@ -220,7 +200,60 @@ def initialize_fleet_runtime(
         toolsets=toolsets,
         app=app,
         cloud_trace_enabled=cloud_trace_enabled,
+        model=resolved_model,
     )
+
+
+def apply_model(runtime: WardenFleetRuntime, model: str) -> str:
+    """Rebuild the ADK hierarchy onto a different cataloged Gemini model."""
+    resolved = resolve_model(model)
+    lead, app, runner = _assemble_adk(
+        policy=runtime.policy,
+        plugin=runtime.plugin,
+        toolsets=runtime.toolsets,
+        model=resolved,
+        session_service=runtime.session_service,
+    )
+    runtime.lead_agent = lead
+    runtime.app = app
+    runtime.runner = runner
+    runtime.model = resolved
+    return resolved
+
+
+def _assemble_adk(
+    *,
+    policy: Policy,
+    plugin: WardenPlugin,
+    toolsets: dict[str, list[FunctionTool]],
+    model: str,
+    session_service: BaseSessionService,
+) -> tuple[Agent, App, Runner]:
+    auditor = create_auditor_agent(tools=toolsets["auditor"], model=model)
+    provisioner = create_provisioner_agent(tools=toolsets["provisioner"], model=model)
+    lifecycle = create_lifecycle_agent(tools=toolsets["lifecycle"], model=model)
+    lead = create_fleet_lead_agent(
+        sub_agents=[auditor, provisioner, lifecycle],
+        tools=toolsets["security_test"],
+        model=model,
+    )
+    app = App(
+        name=f"warden-{policy.fleet}",
+        root_agent=lead,
+        plugins=[plugin],
+        context_cache_config=ContextCacheConfig(
+            cache_intervals=10,
+            ttl_seconds=1800,
+            min_tokens=4096,
+        ),
+        resumability_config=ResumabilityConfig(is_resumable=True),
+    )
+    runner = Runner(
+        app=app,
+        session_service=session_service,
+        auto_create_session=True,
+    )
+    return lead, app, runner
 
 
 @dataclass
@@ -242,6 +275,7 @@ async def execute_turn(
     user_id: str = "operator-01",
     session_id: str = "session-001",
     run_id: str | None = None,
+    mission_id: str | None = None,
     resume: bool = False,
 ) -> FleetTurnResult:
     """Execute one user interaction with the fleet and capture governance artifacts."""
@@ -260,7 +294,8 @@ async def execute_turn(
     events_count = 0
     final_text_parts: list[str] = []
 
-    approval_token = begin_workflow(run_id or runtime.run_id)
+    effective_run_id = run_id or runtime.run_id
+    approval_token = begin_workflow(effective_run_id, mission_id, user_id)
     try:
         # Run the ADK runner async event loop
         async for event in runtime.runner.run_async(
@@ -277,12 +312,17 @@ async def execute_turn(
         pending_approval_ids = finish_workflow(approval_token)
 
     # Gather audit records & pending approvals
-    records = await runtime.ledger.read()
+    all_records = await runtime.ledger.read()
+    records = [record for record in all_records if record.run_id == effective_run_id]
     verdict = await runtime.ledger.verify()
     pending: list[Ticket] = []
     pending_method = getattr(runtime.approvals, "pending", None)
     if pending_method is not None:
-        pending = await pending_method()
+        pending = [
+            ticket
+            for ticket in await pending_method()
+            if ticket.approval_id in pending_approval_ids
+        ]
 
     return FleetTurnResult(
         response_text="\n".join(final_text_parts).strip(),

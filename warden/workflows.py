@@ -31,6 +31,8 @@ class Workflow:
     session_id: str
     requested_by: str
     run_id: str
+    mission_id: str | None = None
+    model: str = "gemini-3.5-flash"
     state: WorkflowState = WorkflowState.RUNNING
     approval_ids: list[str] = field(default_factory=list)
     resume_count: int = 0
@@ -42,11 +44,13 @@ class Workflow:
 
 class WorkflowStore(Protocol):
     async def create(
-        self, *, prompt: str, user_id: str, session_id: str, requested_by: str, run_id: str
+        self, *, prompt: str, user_id: str, session_id: str, requested_by: str, run_id: str,
+        model: str = "gemini-3.5-flash", mission_id: str | None = None,
     ) -> Workflow: ...
     async def get(self, workflow_id: str) -> Workflow | None: ...
     async def attach_approvals(self, workflow_id: str, approval_ids: list[str]) -> Workflow: ...
     async def find_by_approval(self, approval_id: str) -> Workflow | None: ...
+    async def claim_resume(self, workflow_id: str) -> Workflow: ...
     async def update(
         self,
         workflow_id: str,
@@ -66,11 +70,13 @@ class MemoryWorkflowStore:
         self._lock = asyncio.Lock()
 
     async def create(
-        self, *, prompt: str, user_id: str, session_id: str, requested_by: str, run_id: str
+        self, *, prompt: str, user_id: str, session_id: str, requested_by: str, run_id: str,
+        model: str = "gemini-3.5-flash", mission_id: str | None = None,
     ) -> Workflow:
         workflow = Workflow(
             workflow_id=f"wf-{uuid4().hex}", prompt=prompt, user_id=user_id,
             session_id=session_id, requested_by=requested_by, run_id=run_id,
+            mission_id=mission_id, model=model,
         )
         async with self._lock:
             self._workflows[workflow.workflow_id] = workflow
@@ -94,6 +100,18 @@ class MemoryWorkflowStore:
                 if approval_id in workflow.approval_ids:
                     return self._copy(workflow)
         return None
+
+    async def claim_resume(self, workflow_id: str) -> Workflow:
+        """Atomically allow exactly one worker to resume a queued workflow."""
+        async with self._lock:
+            workflow = self._require(workflow_id)
+            if workflow.state is not WorkflowState.QUEUED:
+                raise ValueError(f"Workflow is {workflow.state.value}")
+            workflow.state = WorkflowState.RUNNING
+            workflow.resume_count += 1
+            workflow.error = None
+            workflow.updated_at = _now()
+            return self._copy(workflow)
 
     async def update(
         self,
@@ -137,11 +155,13 @@ class FirestoreWorkflowStore:
         self._workflows = self._fs.collection(collection)
 
     async def create(
-        self, *, prompt: str, user_id: str, session_id: str, requested_by: str, run_id: str
+        self, *, prompt: str, user_id: str, session_id: str, requested_by: str, run_id: str,
+        model: str = "gemini-3.5-flash", mission_id: str | None = None,
     ) -> Workflow:
         workflow = Workflow(
             workflow_id=f"wf-{uuid4().hex}", prompt=prompt, user_id=user_id,
             session_id=session_id, requested_by=requested_by, run_id=run_id,
+            mission_id=mission_id, model=model,
         )
         await self._workflows.document(workflow.workflow_id).set(_workflow_doc(workflow))
         return workflow
@@ -163,6 +183,28 @@ class FirestoreWorkflowStore:
         async for snapshot in query.stream():
             return _workflow_from_doc(snapshot.to_dict())
         return None
+
+    async def claim_resume(self, workflow_id: str) -> Workflow:
+        """Transactionally claim a queued resume across Cloud Run instances."""
+        ref = self._workflows.document(workflow_id)
+        transaction = self._fs.transaction()
+
+        @self._firestore.async_transactional
+        async def claim_once(txn: Any) -> Workflow:
+            snapshot = await ref.get(transaction=txn)
+            if not snapshot.exists:
+                raise KeyError(workflow_id)
+            workflow = _workflow_from_doc(snapshot.to_dict())
+            if workflow.state is not WorkflowState.QUEUED:
+                raise ValueError(f"Workflow is {workflow.state.value}")
+            workflow.state = WorkflowState.RUNNING
+            workflow.resume_count += 1
+            workflow.error = None
+            workflow.updated_at = _now()
+            txn.set(ref, _workflow_doc(workflow))
+            return workflow
+
+        return await claim_once(transaction)
 
     async def update(
         self,
@@ -202,4 +244,5 @@ def _workflow_from_doc(data: dict[str, Any] | None) -> Workflow:
         raise ValueError("workflow document is empty")
     value = dict(data)
     value["state"] = WorkflowState(value["state"])
+    value.setdefault("mission_id", None)
     return Workflow(**value)

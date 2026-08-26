@@ -14,3 +14,6 @@ build/
 build/
 dist/
 *.spec
+
+# Local transcription scratch
+.transcripts/

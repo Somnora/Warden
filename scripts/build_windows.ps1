@@ -19,6 +19,7 @@ if ((Test-Path $Build) -or (Test-Path (Join-Path $Dist "Warden.exe"))) {
     --onefile `
     --windowed `
     --name Warden `
+    --icon "$Root\assets\warden.ico" `
     --add-data "$Root\warden\templates;warden\templates" `
     --add-data "$Root\warden\static;warden\static" `
     --add-data "$Root\warden\policy\policy.yaml;warden\policy" `

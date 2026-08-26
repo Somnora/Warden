@@ -7,13 +7,15 @@ requires-python = ">=3.11"
 dependencies = [
     # Google Agent Framework (hackathon requirement 2)
     "google-adk>=2.7.1",
-    # Gemini 3.7 Flash via Google GenAI / ADK
+    # Gemini Flash via Google GenAI / ADK (default: gemini-3.5-flash)
     "google-genai>=2.12",
     # Google Cloud infrastructure (hackathon requirement 3)
     "google-cloud-firestore>=2.19",
-    "google-cloud-pubsub>=2.23",
     "google-cloud-tasks>=2.18",
-    "google-cloud-compute>=1.19",
+    "google-cloud-asset>=3.30",
+    "google-cloud-security-center>=1.37",
+    "google-cloud-bigquery>=3.35",
+    "google-cloud-storage>=3.2",
     # ADK 2.7.x binds the MCP 1.x session API. MCP SDK 2.0.0 relocated
     # mcp.shared.session.ProgressFnT and McpToolset fails to import.
     "mcp>=1.29,<2",

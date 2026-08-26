@@ -17,6 +17,7 @@ def test_bridge_headers(bridge):
     headers = bridge._headers()
     assert headers["Authorization"] == "Bearer test-secret-token"
     assert headers["Content-Type"] == "application/json"
+    assert headers["User-Agent"] == "Warden-Bridge/0.2.2"
 
 
 @pytest.mark.asyncio
@@ -115,3 +116,37 @@ async def test_storage_provisioning_approval_gated():
     assert result is not None
     assert result.get("warden") == "awaiting_human_approval"
     assert "approval_id" in result
+
+
+@pytest.mark.asyncio
+async def test_factory_canonicalizes_cluster_ttl_before_provider_call():
+    captured = {}
+
+    class Backend:
+        async def launch_cluster(self, **kwargs):
+            captured.update(kwargs)
+            return {"status": "ok"}
+
+    tool = next(t for t in create_toolset(backend=Backend())["provisioner"] if t.name == "launch_cluster")
+    await tool.func(
+        instance_type="g2-standard-8", machine_type="a2-highgpu-1g",
+        region="us-west1", max_lifetime_minutes=90,
+    )
+    assert captured["instance_type"] == "a2-highgpu-1g"
+    assert captured["max_lifetime_seconds"] == 5400
+
+
+@pytest.mark.asyncio
+async def test_manifold_cluster_payload_carries_enforced_ttl(bridge):
+    captured = {}
+
+    async def fake_request(method, path, **kwargs):
+        captured.update(kwargs["json_data"])
+        return {"status": "ok"}
+
+    bridge._request = fake_request
+    await bridge.launch_cluster(
+        instance_type="g2-standard-8", region="us-west1",
+        node_count=2, max_lifetime_minutes=90,
+    )
+    assert captured["max_lifetime_seconds"] == 5400

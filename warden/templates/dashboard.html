@@ -3,11 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#111312">
     <title>Warden // Enterprise Fleet Control Plane</title>
+    <link rel="icon" type="image/png" href="/static/favicon.png">
+    <link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
     <!-- Compiled locally: the desktop app stays styled without a browser CDN. -->
     <link rel="stylesheet" href="/static/dashboard.css">
-    <!-- Lucide Icons -->
-    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Lucide Icons (Vendored locally: zero external CDN dependency) -->
+    <script src="/static/lucide.min.js"></script>
     <style>
         :root { color-scheme: dark; }
         body {
@@ -34,6 +37,16 @@
         .chain-block:hover {
             transform: translateY(-2px);
             border-color: rgba(132, 170, 143, 0.52);
+        }
+        .brand-mark {
+            width: 3.5rem;
+            height: 3.5rem;
+            flex: 0 0 auto;
+            border-radius: 1rem;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.34), 0 0 0 1px rgba(218, 215, 201, 0.12);
+        }
+        @media (max-width: 640px) {
+            .brand-mark { width: 3rem; height: 3rem; border-radius: 0.875rem; }
         }
         /* Legacy utility aliases retain the compact dashboard markup while
            rendering in Warden's graphite, sage, and brass palette. */
@@ -74,27 +87,25 @@
     <!-- Top Header Navigation -->
     <header class="flex flex-col md:flex-row md:items-center justify-between pb-6 mb-8 border-b border-gray-800 gap-4">
         <div class="flex items-center gap-3">
-            <div class="p-2.5 bg-indigo-600/20 text-indigo-400 border border-indigo-500/30 rounded-xl">
-                <i data-lucide="shield-check" class="w-8 h-8"></i>
-            </div>
-            <div>
-                <div class="flex items-center gap-2">
+            <img class="brand-mark" src="/static/warden-logo.png" alt="Warden logo" width="56" height="56">
+            <div class="flex-1">
+                <div class="flex flex-wrap items-center gap-2">
                     <h1 class="text-2xl font-bold tracking-tight text-white">WARDEN</h1>
                     <span id="mode-badge" class="px-2 py-0.5 text-xs font-semibold bg-emerald-500/10 text-emerald-300 border border-emerald-500/30 rounded-full">Control plane initializing</span>
-                    <span class="px-2 py-0.5 text-xs font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 rounded-full flex items-center gap-1">
-                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span> Gemini 3.7 Flash · ADK 2.7
+                    <span id="model-badge" class="px-2 py-0.5 text-xs font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 rounded-full flex items-center gap-1">
+                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span> Gemini fleet · ADK 2.7
                     </span>
                 </div>
-                <p class="text-sm text-gray-400">Governed autonomy for expensive cloud operations — visible, reversible, and attributable.</p>
+                <p class="text-sm text-gray-400">Governed autonomy for expensive cloud operations: visible, reversible, and attributable.</p>
             </div>
         </div>
 
         <!-- Quick Status Metrics -->
-        <div class="flex items-center gap-3">
-            <button onclick="refreshAll()" class="px-3 py-2 text-xs font-medium text-gray-300 bg-gray-800 hover:bg-gray-700 border border-gray-700 rounded-lg flex items-center gap-1.5 transition">
+        <div class="flex flex-wrap items-center gap-3">
+            <button data-action="refresh" class="px-3 py-2 text-xs font-medium text-gray-300 bg-gray-800 hover:bg-gray-700 border border-gray-700 rounded-lg flex items-center gap-1.5 transition">
                 <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i> Refresh
             </button>
-            <button onclick="runRedteamSimulation()" class="px-3.5 py-2 text-xs font-semibold text-white bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 rounded-lg shadow-lg flex items-center gap-1.5 transition">
+            <button data-action="redteam" class="px-3.5 py-2 text-xs font-semibold text-white bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 rounded-lg shadow-lg flex items-center gap-1.5 transition">
                 <i data-lucide="crosshair" class="w-3.5 h-3.5"></i> Run Red-Team Audit
             </button>
         </div>
@@ -135,6 +146,55 @@
                         <div id="spend-bar" class="bg-indigo-500 h-2 rounded-full transition-all duration-500" style="width: 0%"></div>
                     </div>
                 </div>
+                <div class="mt-3 flex gap-3 text-[10px] text-gray-500">
+                    <span>Reserved <strong id="spend-reserved" class="font-medium text-amber-300">$0.00</strong></span>
+                    <span>Settled <strong id="spend-settled" class="font-medium text-emerald-300">$0.00</strong></span>
+                    <span>Uncertain <strong id="spend-uncertain" class="font-medium text-rose-300">$0.00</strong></span>
+                </div>
+            </div>
+
+            <!-- Policy Lab Card -->
+            <div class="glass-panel p-5">
+                <div class="flex items-start justify-between gap-3 mb-3">
+                    <div>
+                        <h2 class="text-sm font-semibold uppercase tracking-wider text-gray-400 flex items-center gap-2">
+                            <i data-lucide="flask-conical" class="w-4 h-4 text-cyan-400"></i> Policy Lab
+                        </h2>
+                        <p class="mt-1 text-[11px] text-gray-500">Preview templates safely. Simulation never calls a provider or changes policy.</p>
+                    </div>
+                    <span class="text-[10px] text-cyan-300 border border-cyan-500/20 bg-cyan-500/10 rounded px-1.5 py-0.5">Read-only</span>
+                </div>
+                <form id="policy-lab-form" class="space-y-2">
+                    <select id="policy-template-select" class="w-full bg-gray-900 border border-gray-700 rounded p-2 text-xs text-gray-200"></select>
+                    <textarea id="policy-simulation-input" rows="5" class="w-full bg-gray-900 border border-gray-700 rounded p-2 font-mono text-[10px] text-gray-300" spellcheck="false">{"tool":"launch_gpu","args":{"provider":"gcp","region":"us-west1","machine_type":"g2-standard-8","max_lifetime_minutes":60}}</textarea>
+                    <div class="flex gap-2">
+                        <button type="submit" class="flex-1 py-2 bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-semibold rounded">Simulate action</button>
+                        <button type="button" data-action="policy-replay-manifest" class="px-2.5 py-2 border border-gray-700 hover:border-cyan-500/50 text-gray-300 text-xs rounded">Replay evidence</button>
+                    </div>
+                </form>
+                <div id="policy-lab-result" class="mt-3 text-[11px] text-gray-500">Loading templates…</div>
+            </div>
+
+            <!-- Cloud Evidence Card -->
+            <div class="glass-panel p-5">
+                <div class="flex items-start justify-between gap-3 mb-3">
+                    <div>
+                        <h2 class="text-sm font-semibold uppercase tracking-wider text-gray-400 flex items-center gap-2">
+                            <i data-lucide="cloud-cog" class="w-4 h-4 text-violet-400"></i> Cloud Evidence
+                        </h2>
+                        <p class="mt-1 text-[11px] text-gray-500">Asset drift, Security Command Center findings, finance, and sealed archives.</p>
+                    </div>
+                    <span id="cloud-evidence-badge" class="text-[10px] text-gray-400 border border-gray-700 rounded px-1.5 py-0.5">No snapshot</span>
+                </div>
+                <div class="grid grid-cols-3 gap-2 text-center">
+                    <div class="p-2 bg-gray-900/70 border border-gray-800 rounded"><span class="block text-[10px] text-gray-500">Drift</span><strong id="cloud-drift-count" class="text-lg text-amber-300">—</strong></div>
+                    <div class="p-2 bg-gray-900/70 border border-gray-800 rounded"><span class="block text-[10px] text-gray-500">Findings</span><strong id="cloud-finding-count" class="text-lg text-rose-300">—</strong></div>
+                    <div class="p-2 bg-gray-900/70 border border-gray-800 rounded"><span class="block text-[10px] text-gray-500">30d cost</span><strong id="cloud-finance-total" class="text-lg text-emerald-300">—</strong></div>
+                </div>
+                <div id="cloud-evidence-status" class="mt-3 text-[10px] text-gray-500">Evidence has not been collected.</div>
+                <button type="button" data-action="collect-cloud-evidence" class="mt-3 w-full py-2 bg-violet-600 hover:bg-violet-500 text-white text-xs font-semibold rounded flex items-center justify-center gap-1.5">
+                    <i data-lucide="scan-search" class="w-3.5 h-3.5"></i> Collect & seal evidence
+                </button>
             </div>
 
             <!-- Fleet Agent Hierarchy Card -->
@@ -236,7 +296,7 @@
                     <span class="text-[10px] text-gray-500">30-day, identity-scoped</span>
                 </div>
                 <p class="text-xs text-gray-400 mb-3">Add durable operating context for future asynchronous fleet turns. Secrets are redacted before storage.</p>
-                <form onsubmit="saveMemory(event)" class="space-y-2">
+                <form id="memory-form" class="space-y-2">
                     <textarea id="memory-input" rows="2" class="w-full bg-gray-900/80 border border-gray-700 rounded-lg p-2.5 text-xs text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500" placeholder="e.g. Prefer us-west1 for research jobs; the finance owner requires cost notes."></textarea>
                     <div class="flex justify-between items-center">
                         <span id="memory-status" class="text-[10px] text-gray-500">No saved context yet</span>
@@ -245,13 +305,59 @@
                 </form>
             </div>
 
+            <!-- Mission Contract Builder -->
+            <div class="glass-panel p-5">
+                <div class="flex items-center justify-between mb-3">
+                    <h2 class="text-sm font-semibold uppercase tracking-wider text-gray-400 flex items-center gap-2">
+                        <i data-lucide="route" class="w-4 h-4 text-emerald-400"></i> Mission Contract
+                    </h2>
+                    <span class="text-[10px] text-emerald-300 border border-emerald-500/20 bg-emerald-500/10 rounded px-1.5 py-0.5">Bounded Autopilot</span>
+                </div>
+                <p class="text-xs text-gray-400 mb-3">Approve an outcome once. In-scope compute actions run inside the signed envelope; deviations return to the approval queue.</p>
+                <form id="mission-form" class="space-y-2.5">
+                    <textarea id="mission-objective" rows="2" class="w-full bg-gray-900/80 border border-gray-700 rounded-lg p-2.5 text-xs text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500" placeholder="e.g. Produce the render on one g2-standard-8 in us-west1 and finish within 60 minutes."></textarea>
+                    <div class="grid grid-cols-3 gap-2">
+                        <label class="text-[10px] text-gray-500">Max spend
+                            <input id="mission-cost" type="number" min="0.01" max="25" step="0.01" value="2.00" class="mt-1 w-full bg-gray-900/80 border border-gray-700 rounded-lg px-2 py-1.5 text-xs text-white">
+                        </label>
+                        <label class="text-[10px] text-gray-500">Max minutes
+                            <input id="mission-ttl" type="number" min="1" max="180" step="1" value="60" class="mt-1 w-full bg-gray-900/80 border border-gray-700 rounded-lg px-2 py-1.5 text-xs text-white">
+                        </label>
+                        <label class="text-[10px] text-gray-500">Max actions
+                            <input id="mission-actions" type="number" min="1" max="100" step="1" value="1" class="mt-1 w-full bg-gray-900/80 border border-gray-700 rounded-lg px-2 py-1.5 text-xs text-white">
+                        </label>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2">
+                        <select id="mission-region" class="bg-gray-900/80 border border-gray-700 rounded-lg px-2 py-1.5 text-xs text-gray-100">
+                            <option value="us-west1">us-west1</option><option value="us-central1">us-central1</option>
+                        </select>
+                        <select id="mission-machine" class="bg-gray-900/80 border border-gray-700 rounded-lg px-2 py-1.5 text-xs text-gray-100">
+                            <option value="g2-standard-8">g2-standard-8</option><option value="g2-standard-12">g2-standard-12</option><option value="a2-highgpu-1g">a2-highgpu-1g</option>
+                        </select>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <span id="mission-form-status" class="text-[10px] text-gray-500">Creates a reviewable draft</span>
+                        <button type="submit" class="px-3 py-1.5 text-[11px] font-semibold text-white bg-emerald-600 hover:bg-emerald-500 rounded-lg transition">Create Mission</button>
+                    </div>
+                </form>
+                <div id="missions-container" class="mt-4 pt-3 border-t border-gray-800 space-y-2">
+                    <div class="text-xs text-gray-500">No Missions yet.</div>
+                </div>
+            </div>
+
             <!-- Interactive Fleet Dispatch Terminal -->
             <div class="glass-panel p-5">
                 <h2 class="text-sm font-semibold uppercase tracking-wider text-gray-400 mb-3 flex items-center gap-2">
                     <i data-lucide="terminal" class="w-4 h-4 text-indigo-400"></i> Dispatch Fleet Task
                 </h2>
 
-                <form onsubmit="dispatchTask(event)" class="space-y-3">
+                <form id="dispatch-form" class="space-y-3">
+                    <div class="flex flex-col sm:flex-row gap-2 sm:items-center">
+                        <label for="model-select" class="text-[11px] text-gray-500 whitespace-nowrap">Gemini model</label>
+                        <select id="model-select" class="flex-1 bg-gray-900/80 border border-gray-700 rounded-lg px-2.5 py-1.5 text-xs text-gray-100 focus:outline-none focus:border-indigo-500">
+                            <option value="gemini-3.5-flash">Gemini 3.5 Flash</option>
+                        </select>
+                    </div>
                     <div>
                         <textarea id="prompt-input" rows="3" class="w-full bg-gray-900/80 border border-gray-700 rounded-lg p-3 text-sm text-gray-100 placeholder-gray-500 focus:outline-none focus:border-indigo-500" placeholder="e.g. Inspect running instances and estimate cost for a g2-standard-8 node in us-west1..."></textarea>
                     </div>
@@ -279,9 +385,14 @@
                     <h2 class="text-sm font-semibold uppercase tracking-wider text-gray-400 flex items-center gap-2">
                         <i data-lucide="link" class="w-4 h-4 text-emerald-400"></i> Cryptographic Audit Trail
                     </h2>
-                    <button onclick="verifyChain()" class="px-2.5 py-1 text-[11px] font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/20 rounded flex items-center gap-1 transition">
-                        <i data-lucide="shield" class="w-3 h-3"></i> Verify Chain
-                    </button>
+                    <div class="flex gap-1.5">
+                        <button data-action="export-audit" class="px-2.5 py-1 text-[11px] font-medium bg-gray-800 text-gray-300 border border-gray-700 hover:bg-gray-700 rounded flex items-center gap-1 transition">
+                            <i data-lucide="download" class="w-3 h-3"></i> Export Evidence
+                        </button>
+                        <button data-action="verify-chain" class="px-2.5 py-1 text-[11px] font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/20 rounded flex items-center gap-1 transition">
+                            <i data-lucide="shield" class="w-3 h-3"></i> Verify Chain
+                        </button>
+                    </div>
                 </div>
 
                 <div id="ledger-chain-container" class="space-y-2.5 max-h-96 overflow-y-auto pr-1">
@@ -300,8 +411,10 @@
                 <div class="flex flex-wrap gap-1.5">
                     <span class="px-2 py-0.5 text-[11px] bg-purple-500/10 text-purple-300 border border-purple-500/20 rounded">gcp_api_key</span>
                     <span class="px-2 py-0.5 text-[11px] bg-purple-500/10 text-purple-300 border border-purple-500/20 rounded">gcp_service_account_key</span>
-                    <span class="px-2 py-0.5 text-[11px] bg-purple-500/10 text-purple-300 border border-purple-500/20 rounded">ssh_private_key</span>
+                    <span class="px-2 py-0.5 text-[11px] bg-purple-500/10 text-purple-300 border border-purple-500/20 rounded">private_key_pem</span>
                     <span class="px-2 py-0.5 text-[11px] bg-purple-500/10 text-purple-300 border border-purple-500/20 rounded">bearer_token</span>
+                    <span class="px-2 py-0.5 text-[11px] bg-purple-500/10 text-purple-300 border border-purple-500/20 rounded">oauth_access_token</span>
+                    <span class="px-2 py-0.5 text-[11px] bg-purple-500/10 text-purple-300 border border-purple-500/20 rounded">jwt_token</span>
                 </div>
                 <div id="model-armor-status" class="mt-3 pt-3 border-t border-gray-800 text-[11px] text-gray-500">Model Armor: checking configuration...</div>
             </div>
@@ -316,21 +429,22 @@
                 <div class="flex items-center gap-2 text-red-400 font-bold text-lg">
                     <i data-lucide="shield-alert" class="w-6 h-6"></i> Red-Team Adversarial Penetration Test
                 </div>
-                <button onclick="closeRedteamModal()" class="text-gray-400 hover:text-white">&times;</button>
+                <button data-action="close-redteam" class="text-gray-400 hover:text-white">&times;</button>
             </div>
             <div id="redteam-results" class="font-mono text-xs space-y-3 max-h-96 overflow-y-auto">
-                <div class="text-center py-6 text-gray-400 animate-pulse">Running 5 automated attack vectors against Warden control plane...</div>
+                <div class="text-center py-6 text-gray-400 animate-pulse">Running 6 automated attack vectors against Warden control plane...</div>
             </div>
             <div class="mt-4 pt-3 border-t border-gray-800 flex justify-end">
-                <button onclick="closeRedteamModal()" class="px-4 py-2 bg-gray-800 hover:bg-gray-700 text-xs font-semibold rounded-lg text-white">Close</button>
+                <button data-action="close-redteam" class="px-4 py-2 bg-gray-800 hover:bg-gray-700 text-xs font-semibold rounded-lg text-white">Close</button>
             </div>
         </div>
     </div>
 
     <script>
-        // API Base URL
+        // API Base URL and policy preview controller
         const API = window.location.origin;
         let activeWorkflowId = null;
+        let activeMissionId = null;
 
         function escapeHTML(value) {
             return String(value ?? "").replace(/[&<>'"]/g, char => ({
@@ -341,7 +455,12 @@
         async function fetchJSON(path, options = {}) {
             try {
                 const res = await fetch(API + path, options);
-                return await res.json();
+                const payload = await res.json();
+                if (!res.ok) {
+                    console.error("API error on " + path, payload);
+                    return null;
+                }
+                return payload;
             } catch (err) {
                 console.error("Fetch error on " + path, err);
                 return null;
@@ -358,6 +477,112 @@
             const pct = Math.min(100, Math.round((today / maxRun) * 100));
             document.getElementById("spend-pct").innerText = pct + "%";
             document.getElementById("spend-bar").style.width = pct + "%";
+            document.getElementById("spend-reserved").innerText = "$" + Number(data.reserved_usd || 0).toFixed(2);
+            document.getElementById("spend-settled").innerText = "$" + Number(data.settled_usd || 0).toFixed(2);
+            document.getElementById("spend-uncertain").innerText = "$" + Number(data.uncertain_usd || 0).toFixed(2);
+        }
+
+        async function refreshPolicyTemplates() {
+            const data = await fetchJSON("/policy/templates");
+            const select = document.getElementById("policy-template-select");
+            const result = document.getElementById("policy-lab-result");
+            if (!data || !select || !Array.isArray(data.templates)) {
+                if (result) result.innerText = "Policy templates are unavailable.";
+                return;
+            }
+            const selected = select.value || "studio-burst";
+            select.innerHTML = data.templates.map(template =>
+                '<option value="' + escapeHTML(template.template_id) + '">' +
+                escapeHTML(template.name) + ' · ' + escapeHTML(template.audience) + '</option>'
+            ).join("");
+            select.value = [...select.options].some(option => option.value === selected)
+                ? selected : (select.options[0] && select.options[0].value);
+            if (result && result.innerText === "Loading templates…") {
+                result.innerText = "Choose a template and preview a single action or a JSON array of actions.";
+            }
+        }
+
+        async function simulatePolicy(event) {
+            event.preventDefault();
+            const input = document.getElementById("policy-simulation-input");
+            const select = document.getElementById("policy-template-select");
+            const result = document.getElementById("policy-lab-result");
+            let parsed;
+            try {
+                parsed = JSON.parse(input.value);
+            } catch (_) {
+                result.innerText = "Enter valid JSON: one action object or an array of actions.";
+                return;
+            }
+            const actions = Array.isArray(parsed) ? parsed : [parsed];
+            result.innerText = "Simulating without provider calls…";
+            const preview = await fetchJSON("/policy/simulate", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ template_id: select.value, actions }),
+            });
+            if (!preview) {
+                result.innerText = "Simulation was rejected. Check the template and action JSON.";
+                return;
+            }
+            const decisions = (preview.actions || []).map(action =>
+                action.tool + ": " + action.disposition.toUpperCase() +
+                (action.quoted_usd === null ? "" : " · $" + Number(action.quoted_usd).toFixed(2))
+            ).join(" · ");
+            const spend = preview.final_projected_spend || {};
+            result.innerHTML = '<span class="text-cyan-300">' + escapeHTML(decisions) +
+                '</span><br><span class="text-gray-500">Projected after approvals: $' +
+                Number(spend.run_usd || 0).toFixed(2) + " run · " +
+                Number(spend.live_instances || 0) + " live. No state changed.</span>";
+        }
+
+        async function showReplayManifest() {
+            const result = document.getElementById("policy-lab-result");
+            result.innerText = "Loading digest-bound audit evidence…";
+            const manifest = await fetchJSON("/policy/replay/manifest");
+            if (!manifest) {
+                result.innerText = "Replay evidence is unavailable.";
+                return;
+            }
+            const count = (manifest.records || []).length;
+            const verified = manifest.ledger_verification && manifest.ledger_verification.ok;
+            result.innerHTML = '<span class="' + (verified ? "text-emerald-300" : "text-rose-300") + '">' +
+                (verified ? "Ledger verified" : "Ledger verification failed") + "</span> · " + count +
+                " evidence record" + (count === 1 ? "" : "s") +
+                ". Replay accepts supplied arguments only when their digest matches this audit evidence.";
+        }
+
+        async function refreshCloudEvidence() {
+            const data = await fetchJSON("/integrations/cloud/evidence");
+            if (!data) return;
+            const latest = data.snapshots && data.snapshots[0];
+            const badge = document.getElementById("cloud-evidence-badge");
+            if (!latest) {
+                badge.innerText = "No snapshot";
+                return;
+            }
+            document.getElementById("cloud-drift-count").innerText = Number(latest.drift_count || 0);
+            document.getElementById("cloud-finding-count").innerText = Number(latest.security_findings_count || 0);
+            document.getElementById("cloud-finance-total").innerText = "$" + Number(latest.net_cost_30d || 0).toFixed(2);
+            const sealed = data.verification && data.verification.ok;
+            const immutable = latest.immutable_archived;
+            badge.innerText = immutable ? "Retention locked" : (sealed ? "Chain sealed" : "Verify failed");
+            badge.className = immutable
+                ? "text-[10px] text-emerald-300 border border-emerald-500/20 bg-emerald-500/10 rounded px-1.5 py-0.5"
+                : "text-[10px] text-amber-300 border border-amber-500/20 bg-amber-500/10 rounded px-1.5 py-0.5";
+            const sources = Object.entries(latest.source_status || {}).map(([name, source]) =>
+                name.replaceAll("_", " ") + ": " + source.status
+            ).join(" · ");
+            document.getElementById("cloud-evidence-status").innerText =
+                "#" + latest.seq + " · " + sources + " · hash " + String(latest.evidence_hash || "").slice(0, 12) + "…";
+        }
+
+        async function collectCloudEvidence() {
+            const status = document.getElementById("cloud-evidence-status");
+            status.innerText = "Collecting read-only cloud signals and sealing evidence…";
+            const result = await fetchJSON("/integrations/cloud/evidence/collect", { method: "POST" });
+            status.innerText = result ? result.message : "Evidence collection was not authorized or failed.";
+            await refreshCloudEvidence();
         }
 
         async function refreshHealth() {
@@ -376,6 +601,20 @@
                 ? "Model Armor: active — inbound prompts are screened before Gemini"
                 : "Model Armor: configurable — set a template to enable inline prompt screening";
             document.getElementById("model-armor-status").innerText = armor;
+            const modelBadge = document.getElementById("model-badge");
+            if (modelBadge) {
+                modelBadge.innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span> ${escapeHTML(data.model || 'Gemini')} · ADK 2.7`;
+            }
+            const select = document.getElementById("model-select");
+            if (select && Array.isArray(data.models) && data.models.length) {
+                const previous = select.value || data.model;
+                select.innerHTML = data.models.map(m =>
+                    `<option value="${escapeHTML(m.id)}">${escapeHTML(m.label || m.id)}</option>`
+                ).join("");
+                select.value = previous && [...select.options].some(o => o.value === previous)
+                    ? previous
+                    : (data.model || data.models[0].id);
+            }
         }
 
         async function refreshRegistry() {
@@ -422,6 +661,134 @@
             await refreshMemory();
         }
 
+        async function createMission(event) {
+            event.preventDefault();
+            const objective = document.getElementById("mission-objective").value.trim();
+            const status = document.getElementById("mission-form-status");
+            if (!objective) return;
+            status.innerText = "Creating bounded Mission draft...";
+            const result = await fetchJSON("/missions", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    objective,
+                    allowed_tools: ["launch_gpu"],
+                    allowed_providers: ["gcp"],
+                    allowed_regions: [document.getElementById("mission-region").value],
+                    allowed_machine_types: [document.getElementById("mission-machine").value],
+                    max_cost_usd: Number(document.getElementById("mission-cost").value),
+                    max_lifetime_minutes: Number(document.getElementById("mission-ttl").value),
+                    max_actions: Number(document.getElementById("mission-actions").value),
+                    max_instances_per_action: 1,
+                }),
+            });
+            if (!result) {
+                status.innerText = "Mission contract was rejected. Check its limits.";
+                return;
+            }
+            activeMissionId = result.mission.mission_id;
+            status.innerText = "Draft created. Review its bounds, then approve the envelope.";
+            await refreshMissions();
+        }
+
+        async function refreshMissions() {
+            const missions = await fetchJSON("/missions");
+            const container = document.getElementById("missions-container");
+            if (!missions || !missions.length) {
+                container.innerHTML = `<div class="text-xs text-gray-500">No Missions yet.</div>`;
+                return;
+            }
+            container.innerHTML = missions.slice(0, 5).map(m => {
+                const c = m.contract || {};
+                const e = m.envelope || null;
+                const stateClass = m.state === "completed" ? "text-emerald-300" : m.state === "draft" ? "text-amber-300" : "text-indigo-300";
+                const approve = m.state === "draft"
+                    ? `<button data-action="mission-approve" data-id="${escapeHTML(encodeURIComponent(m.mission_id))}" class="flex-1 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-semibold rounded">Approve envelope</button>` : "";
+                const run = m.state === "approved"
+                    ? `<button data-action="mission-run" data-id="${escapeHTML(encodeURIComponent(m.mission_id))}" class="flex-1 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-[11px] font-semibold rounded">Run Mission</button>` : "";
+                const revoke = ["draft", "approved"].includes(m.state)
+                    ? `<button data-action="mission-cancel" data-id="${escapeHTML(encodeURIComponent(m.mission_id))}" class="px-2.5 py-1.5 bg-rose-500/10 border border-rose-500/20 text-rose-400 text-[11px] rounded">Revoke</button>` : "";
+                const emergency = (m.state === "running" || (m.state === "completed" && m.cleanup_status === "pending"))
+                    ? `<button data-action="mission-stop" data-id="${escapeHTML(encodeURIComponent(m.mission_id))}" class="px-2.5 py-1.5 bg-rose-600 text-white text-[11px] font-semibold rounded">Emergency stop</button>` : "";
+                const progress = Number(m.progress_percent || 0);
+                const resources = (m.resources || []).map(resource => {
+                    const ttl = resource.remaining_seconds === null || resource.remaining_seconds === undefined
+                        ? 'TTL unavailable' : resource.remaining_seconds > 0 ? `${Math.ceil(resource.remaining_seconds / 60)}m remaining` : 'TTL elapsed';
+                    return `<div class="flex justify-between text-[10px] text-gray-400"><span>${escapeHTML(resource.resource_type)} · ${escapeHTML(resource.resource_id)}</span><span class="${resource.status === 'cleaned' ? 'text-emerald-300' : 'text-amber-300'}">${escapeHTML(resource.status)} · ${ttl}</span></div>`;
+                }).join('');
+                const artifacts = (m.artifacts || []).map(artifact =>
+                    `<div class="flex items-center gap-1.5 text-[10px] text-emerald-300"><i data-lucide="package-check" class="w-3 h-3"></i><span>${escapeHTML(artifact.name)}</span><span class="text-gray-600">${escapeHTML(artifact.kind)}</span></div>`
+                ).join('');
+                const receipts = (m.cleanup_receipts || []).slice(-3).map(receipt =>
+                    `<div class="text-[10px] text-emerald-300">✓ ${escapeHTML(receipt.resource_id)} · ${escapeHTML(receipt.status)}</div>`
+                ).join('');
+                const timeline = (m.events || []).slice(-5).reverse().map(event =>
+                    `<div class="flex gap-2 text-[10px]"><span class="text-gray-600 font-mono">${escapeHTML(new Date(event.ts).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'}))}</span><span class="text-gray-400">${escapeHTML(event.summary)}</span></div>`
+                ).join('');
+                return `<div class="p-3 bg-gray-900/80 border ${m.mission_id === activeMissionId ? 'border-emerald-500/30' : 'border-gray-800'} rounded-lg space-y-2">
+                    <div class="flex justify-between gap-2"><span class="text-xs text-gray-200 line-clamp-2">${escapeHTML(m.objective)}</span><span class="text-[10px] font-semibold uppercase ${stateClass}">${escapeHTML(m.state)}</span></div>
+                    <div class="text-[10px] text-gray-500">$${Number(c.max_cost_usd || 0).toFixed(2)} · ${escapeHTML(c.max_lifetime_minutes)}m · ${escapeHTML(c.max_actions)} action${c.max_actions === 1 ? '' : 's'} · ${escapeHTML((c.allowed_regions || []).join(', '))} · ${escapeHTML((c.allowed_machine_types || []).join(', '))}</div>
+                    <div><div class="flex justify-between text-[10px] text-gray-500"><span>Mission progress</span><span>${progress}%</span></div><div class="mt-1 h-1.5 rounded bg-gray-800 overflow-hidden"><div class="h-full bg-emerald-500 rounded" style="width:${Math.min(100, progress)}%"></div></div></div>
+                    ${e ? `<div class="grid grid-cols-2 gap-2 text-[10px]"><div class="p-2 bg-gray-800/50 rounded"><span class="block text-gray-600">Reserved / ceiling</span><span class="text-emerald-300">$${Number(e.reserved_usd || 0).toFixed(2)} / $${Number(c.max_cost_usd || 0).toFixed(2)}</span></div><div class="p-2 bg-gray-800/50 rounded"><span class="block text-gray-600">Authority remaining</span><span class="text-indigo-300">${escapeHTML(e.remaining_actions)} action${Number(e.remaining_actions) === 1 ? '' : 's'} · $${Number(e.remaining_usd || 0).toFixed(2)}</span></div></div>` : ''}
+                    ${resources ? `<div class="space-y-1 pt-1"><div class="text-[10px] uppercase tracking-wide text-gray-600">Resources & TTL</div>${resources}</div>` : ''}
+                    ${artifacts ? `<div class="space-y-1 pt-1"><div class="text-[10px] uppercase tracking-wide text-gray-600">Artifact inbox</div>${artifacts}</div>` : ''}
+                    ${receipts ? `<div class="p-2 bg-emerald-500/10 border border-emerald-500/20 rounded"><div class="text-[10px] uppercase tracking-wide text-emerald-400 mb-1">Cleanup receipts</div>${receipts}</div>` : ''}
+                    ${timeline ? `<div class="space-y-1 pt-1 border-t border-gray-800"><div class="text-[10px] uppercase tracking-wide text-gray-600">Action timeline</div>${timeline}</div>` : ''}
+                    ${(approve || run || revoke || emergency) ? `<div class="flex gap-2">${approve}${run}${revoke}${emergency}</div>` : ''}
+                </div>`;
+            }).join("");
+            lucide.createIcons();
+        }
+
+        async function approveMission(missionId) {
+            const result = await fetchJSON(`/missions/${missionId}/approve`, {
+                method: "POST", headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ ttl_minutes: 60 }),
+            });
+            if (result) activeMissionId = result.mission_id;
+            await refreshMissions();
+        }
+
+        async function runMission(missionId) {
+            activeMissionId = decodeURIComponent(missionId);
+            const outBox = document.getElementById("turn-output-box");
+            const outText = document.getElementById("turn-output-text");
+            outBox.classList.remove("hidden");
+            outText.innerText = "Running inside the approved Mission envelope...";
+            const result = await fetchJSON(`/missions/${missionId}/run`, {
+                method: "POST", headers: { "Content-Type": "application/json" }, body: "{}",
+            });
+            if (result) {
+                activeWorkflowId = result.workflow.workflow_id;
+                outText.innerText = result.response || "Mission started.";
+            } else {
+                outText.innerText = "Mission could not be started.";
+            }
+            await refreshAll();
+        }
+
+        async function cancelMission(missionId) {
+            await fetchJSON(`/missions/${missionId}/cancel`, { method: "POST" });
+            await refreshMissions();
+        }
+
+        async function emergencyStopMission(missionId) {
+            if (!window.confirm("Revoke all remaining Mission authority and begin separately approved resource cleanup?")) return;
+            const outBox = document.getElementById("turn-output-box");
+            const outText = document.getElementById("turn-output-text");
+            outBox.classList.remove("hidden");
+            outText.innerText = "Revoking Mission authority and starting governed cleanup...";
+            const result = await fetchJSON(`/missions/${missionId}/emergency-stop`, { method: "POST" });
+            if (result) {
+                activeMissionId = decodeURIComponent(missionId);
+                activeWorkflowId = result.workflow.workflow_id;
+                outText.innerText = result.response || result.message;
+            } else {
+                outText.innerText = "Emergency-stop request could not be completed.";
+            }
+            await refreshAll();
+        }
+
         async function refreshApprovals() {
             const items = await fetchJSON("/approvals/pending");
             const container = document.getElementById("approvals-container");
@@ -450,6 +817,12 @@
                     ? 'No estimate required' : `$${Number(p.estimated_usd).toFixed(2)} reserved`;
                 const ttl = p.max_lifetime_minutes === null || p.max_lifetime_minutes === undefined
                     ? 'Not applicable' : `${escapeHTML(p.max_lifetime_minutes)} min TTL`;
+                const expiry = t.expires_at
+                    ? `Expires ${escapeHTML(new Date(t.expires_at).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'}))}`
+                    : 'Expiry unavailable';
+                const votes = (t.votes || []).filter(vote => vote.granted)
+                    .map(vote => escapeHTML(vote.principal)).join(', ') || 'None yet';
+                const threshold = `${Number(t.required_approvals || 1) - Number(t.approvals_remaining || 0)}/${Number(t.required_approvals || 1)} ${escapeHTML(t.minimum_role || 'approver')} approval${Number(t.required_approvals || 1) === 1 ? '' : 's'}`;
                 return `
                 <div class="p-3.5 bg-gray-900/90 border border-amber-500/30 rounded-xl space-y-2.5">
                     <div class="flex items-center justify-between">
@@ -465,14 +838,16 @@
                     </div>
                     <div class="p-2 rounded bg-gray-800/40 text-[10px] text-gray-300"><span class="text-gray-500">Placement:</span> ${placement}</div>
                     <div class="p-2 rounded bg-gray-800/40 text-[10px] text-gray-300"><span class="text-gray-500">Rollback:</span> ${escapeHTML(p.rollback_plan || 'Separate governed lifecycle action required.')}</div>
+                    <div class="p-2 rounded bg-cyan-500/10 border border-cyan-500/20 text-[10px] text-cyan-200"><span class="text-gray-400">Approval quorum:</span> ${threshold}<br><span class="text-gray-400">Recorded:</span> ${votes}</div>
+                    ${p.envelope_deviation ? `<div class="p-2 rounded bg-amber-500/10 text-[10px] text-amber-300"><span class="text-gray-500">Mission deviation:</span> ${escapeHTML(p.envelope_deviation)}</div>` : ''}
                     <div class="text-[10px] text-gray-500"><span class="text-gray-600">Rules:</span> ${rules}</div>
-                    <div class="text-[10px] text-gray-500 font-mono">Ticket: ${escapeHTML(t.approval_id)}</div>
-                    ${t.workflow_id ? `<button onclick="requestTeardownPlan('${encodeURIComponent(t.workflow_id)}')" class="w-full py-1.5 bg-slate-700 hover:bg-slate-600 text-gray-100 text-xs font-semibold rounded-lg flex items-center justify-center gap-1 transition"><i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i> Plan Safe Teardown</button>` : ''}
+                    <div class="text-[10px] text-gray-500 font-mono">Ticket: ${escapeHTML(t.approval_id)} · ${expiry}</div>
+                    ${t.workflow_id ? `<button data-action="teardown" data-id="${escapeHTML(encodeURIComponent(t.workflow_id))}" class="w-full py-1.5 bg-slate-700 hover:bg-slate-600 text-gray-100 text-xs font-semibold rounded-lg flex items-center justify-center gap-1 transition"><i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i> Plan Safe Teardown</button>` : ''}
                     <div class="flex gap-2 pt-1">
-                        <button onclick="decideTicket('${encodeURIComponent(t.approval_id)}', true)" class="flex-1 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold rounded-lg flex items-center justify-center gap-1 transition">
+                        <button data-action="ticket-approve" data-id="${escapeHTML(encodeURIComponent(t.approval_id))}" class="flex-1 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold rounded-lg flex items-center justify-center gap-1 transition">
                             <i data-lucide="check" class="w-3.5 h-3.5"></i> Approve
                         </button>
-                        <button onclick="decideTicket('${encodeURIComponent(t.approval_id)}', false)" class="flex-1 py-1.5 bg-rose-600 hover:bg-rose-500 text-white text-xs font-semibold rounded-lg flex items-center justify-center gap-1 transition">
+                        <button data-action="ticket-deny" data-id="${escapeHTML(encodeURIComponent(t.approval_id))}" class="flex-1 py-1.5 bg-rose-600 hover:bg-rose-500 text-white text-xs font-semibold rounded-lg flex items-center justify-center gap-1 transition">
                             <i data-lucide="x" class="w-3.5 h-3.5"></i> Deny
                         </button>
                     </div>
@@ -539,6 +914,7 @@
                 if (r.outcome === "refused") badgeClass = "bg-rose-500/10 text-rose-400 border-rose-500/20";
                 if (r.outcome === "pending_approval") badgeClass = "bg-amber-500/10 text-amber-400 border-amber-500/20";
                 if (r.outcome === "redacted") badgeClass = "bg-purple-500/10 text-purple-400 border-purple-500/20";
+                if (r.outcome === "envelope_authorized") badgeClass = "bg-emerald-500/10 text-emerald-400 border-emerald-500/20";
 
                 return `
                     <div class="chain-block p-2.5 bg-gray-900/60 border border-gray-800 rounded-lg text-xs space-y-1">
@@ -562,6 +938,10 @@
             }
         }
 
+        function exportAudit() {
+            window.location.assign(API + "/audit/export");
+        }
+
         async function dispatchTask(e) {
             e.preventDefault();
             const input = document.getElementById("prompt-input");
@@ -578,10 +958,14 @@
             outBox.classList.remove("hidden");
             outText.innerText = "Running multi-agent turn through WardenPlugin...";
 
+            const modelSelect = document.getElementById("model-select");
+            const payload = { prompt: input.value.trim() };
+            if (modelSelect && modelSelect.value) payload.model = modelSelect.value;
+
             const res = await fetchJSON("/fleet/run", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ prompt: input.value.trim() }),
+                body: JSON.stringify(payload),
             });
 
             btn.disabled = false;
@@ -603,7 +987,7 @@
             const resultsBox = document.getElementById("redteam-results");
             modal.classList.remove("hidden");
 
-            resultsBox.innerHTML = `<div class="text-center py-6 text-indigo-400 animate-pulse">Running 5 automated attack vectors against Warden control plane...</div>`;
+            resultsBox.innerHTML = `<div class="text-center py-6 text-indigo-400 animate-pulse">Running 6 automated attack vectors against Warden control plane...</div>`;
 
             const data = await fetchJSON("/redteam/run");
             if (!data) {
@@ -636,10 +1020,37 @@
             document.getElementById("redteam-modal").classList.add("hidden");
         }
 
+        document.getElementById("memory-form").addEventListener("submit", saveMemory);
+        document.getElementById("mission-form").addEventListener("submit", createMission);
+        document.getElementById("dispatch-form").addEventListener("submit", dispatchTask);
+        document.getElementById("policy-lab-form").addEventListener("submit", simulatePolicy);
+        document.addEventListener("click", event => {
+            const target = event.target.closest("[data-action]");
+            if (!target) return;
+            const action = target.dataset.action;
+            const id = target.dataset.id;
+            if (action === "refresh") refreshAll();
+            else if (action === "redteam") runRedteamSimulation();
+            else if (action === "export-audit") exportAudit();
+            else if (action === "verify-chain") verifyChain();
+            else if (action === "policy-replay-manifest") showReplayManifest();
+            else if (action === "collect-cloud-evidence") collectCloudEvidence();
+            else if (action === "close-redteam") closeRedteamModal();
+            else if (action === "mission-approve") approveMission(id);
+            else if (action === "mission-run") runMission(id);
+            else if (action === "mission-cancel") cancelMission(id);
+            else if (action === "mission-stop") emergencyStopMission(id);
+            else if (action === "teardown") requestTeardownPlan(id);
+            else if (action === "ticket-approve") decideTicket(id, true);
+            else if (action === "ticket-deny") decideTicket(id, false);
+        });
+
         async function refreshAll() {
             await Promise.all([
                 refreshHealth(), refreshSpend(), refreshApprovals(), refreshLedger(),
                 refreshWorkflow(), refreshRegistry(), refreshMemory(),
+                refreshMissions(), refreshPolicyTemplates(),
+                refreshCloudEvidence(),
             ]);
         }
 

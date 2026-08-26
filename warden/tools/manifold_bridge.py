@@ -13,6 +13,7 @@ import os
 from typing import Any
 import httpx
 
+from warden import __version__
 from warden.tools.definitions import InfrastructureBackend
 
 log = logging.getLogger("warden.manifold_bridge")
@@ -37,7 +38,7 @@ class ManifoldInfrastructureBridge(InfrastructureBackend):
         self.timeout = timeout
 
     def _headers(self) -> dict[str, str]:
-        headers = {"Content-Type": "application/json", "User-Agent": "Warden-Bridge/0.1.0"}
+        headers = {"Content-Type": "application/json", "User-Agent": f"Warden-Bridge/{__version__}"}
         if self.api_token:
             headers["Authorization"] = f"Bearer {self.api_token}"
         return headers
@@ -243,12 +244,14 @@ class ManifoldInfrastructureBridge(InfrastructureBackend):
     ) -> dict[str, Any]:
         itype = machine_type or instance_type
         cname = cluster_name or name or ""
+        ttl = (max_lifetime_minutes * 60) if max_lifetime_minutes is not None else max_lifetime_seconds
         payload = {
             "instance_type": itype,
             "region": region,
             "filesystem": filesystem,
             "node_count": node_count,
             "name": cname,
+            "max_lifetime_seconds": ttl,
             "provider": provider,
             "note": note,
         }

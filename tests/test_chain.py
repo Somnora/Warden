@@ -5,6 +5,7 @@ from dataclasses import asdict
 import pytest
 
 from warden.ledger.chain import GENESIS, Record, append, digest_args, verify
+from warden.ledger.store import _verify_checkpoint
 
 
 def mk(seq_hint: str, **kw) -> Record:
@@ -84,3 +85,19 @@ def test_args_are_committed_but_not_stored():
     assert d1 == d2, "digest must be key-order independent"
     assert "hunter2" not in d1
     assert d1 != digest_args({"region": "us-central1", "secret": "hunter2"})
+
+
+def test_durable_checkpoint_detects_tail_deletion():
+    chain = build(3)
+    checkpoint = {
+        "checkpoint_version": 1,
+        "tip_seq": chain[-1].seq,
+        "tip_hash": chain[-1].entry_hash,
+        "record_count": len(chain),
+    }
+    assert _verify_checkpoint(chain, checkpoint).ok
+    truncated = chain[:-1]
+    assert verify(truncated).ok, "a bare hash chain cannot detect tail truncation"
+    verdict = _verify_checkpoint(truncated, checkpoint)
+    assert not verdict.ok
+    assert "checkpoint" in verdict.detail

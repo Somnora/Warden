@@ -23,6 +23,7 @@ fi
   --noconfirm \
   --windowed \
   --name Warden \
+  --icon "${ROOT_DIR}/assets/warden.icns" \
   --osx-bundle-identifier com.somnora.warden \
   --add-data "${ROOT_DIR}/warden/templates:warden/templates" \
   --add-data "${ROOT_DIR}/warden/static:warden/static" \

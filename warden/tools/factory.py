@@ -114,18 +114,22 @@ def create_toolset(
         max_lifetime_minutes: int | None = None,
     ) -> dict[str, Any]:
         """Provision a single GPU instance. Requires region, instance_type, and max_lifetime_seconds."""
+        canonical_type = machine_type or instance_type
+        canonical_ttl = (
+            max_lifetime_minutes * 60
+            if max_lifetime_minutes is not None
+            else max_lifetime_seconds
+        )
         return await backend.launch_gpu(
-            instance_type=machine_type or instance_type,
+            instance_type=canonical_type,
             region=region,
             filesystem=filesystem,
             purpose=purpose,
             name=name,
-            max_lifetime_seconds=max_lifetime_seconds,
+            max_lifetime_seconds=canonical_ttl,
             provider=provider,
             estimated_usd=estimated_usd,
             note=note,
-            machine_type=machine_type,
-            max_lifetime_minutes=max_lifetime_minutes,
         )
 
     async def launch_cluster(
@@ -143,19 +147,22 @@ def create_toolset(
         max_lifetime_minutes: int | None = None,
     ) -> dict[str, Any]:
         """Provision a multi-node GPU compute cluster. Gated by human approval."""
+        canonical_type = machine_type or instance_type
+        canonical_ttl = (
+            max_lifetime_minutes * 60
+            if max_lifetime_minutes is not None
+            else max_lifetime_seconds
+        )
         return await backend.launch_cluster(
-            instance_type=machine_type or instance_type,
+            instance_type=canonical_type,
             region=region,
             filesystem=filesystem,
             node_count=node_count,
             name=cluster_name or name,
-            max_lifetime_seconds=max_lifetime_seconds,
+            max_lifetime_seconds=canonical_ttl,
             provider=provider,
             estimated_usd=estimated_usd,
             note=note,
-            cluster_name=cluster_name,
-            machine_type=machine_type,
-            max_lifetime_minutes=max_lifetime_minutes,
         )
 
     async def create_filesystem(name: str, region: str = "us-west1", note: str = "") -> dict[str, Any]:

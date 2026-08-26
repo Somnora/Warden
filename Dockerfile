@@ -38,7 +38,7 @@ ENV PATH="/opt/venv/bin:$PATH" \
     PYTHONUNBUFFERED=1 \
     PORT=8080 \
     WARDEN_MODE=mock \
-    WARDEN_MODEL=gemini-3.7-flash \
+    WARDEN_MODEL=gemini-3.5-flash \
     WARDEN_CORS_ORIGINS="http://localhost:8000,http://127.0.0.1:8000"
 
 EXPOSE 8080

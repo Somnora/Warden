@@ -22,7 +22,7 @@ from warden.tools.mock_provider import MockInfrastructureProvider
 def print_banner():
     print("\n" + "=" * 76)
     print("WARDEN: FORTIFIED ENTERPRISE FLEET CONTROL PLANE")
-    print(" Powered by Google ADK 2.7 and Gemini 3.7 Flash (mock control-plane mode)")
+    print(" Powered by Google ADK 2.7 and Gemini 3.5 Flash (mock control-plane mode)")
     print("=" * 76 + "\n")
 
 

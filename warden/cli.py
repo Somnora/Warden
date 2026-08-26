@@ -53,6 +53,7 @@ def cmd_status(args: argparse.Namespace) -> None:
         print("=" * 45)
         print(f"  Fleet:       {data.get('fleet')}")
         print(f"  Status:      {data.get('status')}")
+        print(f"  Model:       {data.get('model')}")
         print(f"  Subagents:   {', '.join(data.get('subagents', []))}")
         print(f"  Today Spend: ${spend.get('day_usd', 0.0):.2f}")
         print(f"  Live Nodes:  {spend.get('live_instances', 0)}")
@@ -121,6 +122,11 @@ def cmd_verify(args: argparse.Namespace) -> None:
 def cmd_run(args: argparse.Namespace) -> None:
     """Execute a prompt against the fleet."""
     try:
+        if args.model:
+            asyncio.run(_post(
+                "/fleet/model", {"model": args.model}, args.url,
+                headers={"X-Warden-Operator": args.user_id},
+            ))
         body = {"prompt": args.prompt, "user_id": args.user_id, "session_id": args.session_id}
         print(f"Submitting task to fleet: \"{args.prompt}\"...")
         res = asyncio.run(_post(
@@ -134,6 +140,31 @@ def cmd_run(args: argparse.Namespace) -> None:
         print(f"Events: {res.get('events_count')} | Pending: {res.get('pending_approvals_count')} | Ledger: {res.get('audit_records_count')} records")
     except Exception as e:
         print(f"Error executing task: {e}", file=sys.stderr)
+        sys.exit(1)
+
+
+def cmd_models(args: argparse.Namespace) -> None:
+    """List or select the Gemini model the fleet runs."""
+    try:
+        if args.model:
+            res = asyncio.run(_post(
+                "/fleet/model",
+                {"model": args.model},
+                args.url,
+                headers={"X-Warden-Operator": os.environ.get("USER", "local-operator")},
+            ))
+            print(f"Fleet model set to {res.get('selected')}")
+            return
+        data = asyncio.run(_get("/models", args.url))
+        selected = data.get("selected")
+        print("Warden Gemini catalog")
+        print("=" * 45)
+        for item in data.get("models", []):
+            mark = "*" if item.get("id") == selected else " "
+            print(f"  [{mark}] {item.get('id')}  {item.get('label')}")
+        print(f"\nSelected: {selected}")
+    except Exception as e:
+        print(f"Error managing fleet model: {e}", file=sys.stderr)
         sys.exit(1)
 
 
@@ -201,7 +232,13 @@ def main() -> None:
     p_run.add_argument("prompt", help="Instruction for the agent fleet")
     p_run.add_argument("--user-id", default="operator-01", help="User ID")
     p_run.add_argument("--session-id", default="default-session", help="Session ID")
+    p_run.add_argument("--model", help="Cataloged Gemini model or alias (e.g. gemini-3.7-flash)")
     p_run.set_defaults(func=cmd_run)
+
+    # Model catalog / selector
+    p_models = subparsers.add_parser("models", help="List or select the fleet Gemini model")
+    p_models.add_argument("--model", help="Set fleet model to this catalog id or alias")
+    p_models.set_defaults(func=cmd_models)
 
     # Red-Team subcommand
     p_redteam = subparsers.add_parser("redteam", help="Run automated adversarial red-team penetration test")

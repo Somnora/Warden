@@ -16,6 +16,35 @@ budget:
   require_max_lifetime_minutes: true
   max_lifetime_ceiling_minutes: 180
 
+# Enterprise approval hierarchy. A normal governed action needs one distinct
+# approver; irreversible/high-blast-radius cluster actions require two senior
+# approvers. The requester can never vote on their own action.
+approval:
+  default:
+    required_approvals: 1
+    minimum_role: approver
+    require_separation_from_requester: true
+  tools:
+    launch_cluster:
+      required_approvals: 2
+      minimum_role: senior_approver
+    terminate_cluster:
+      required_approvals: 2
+      minimum_role: senior_approver
+    delete_template:
+      required_approvals: 2
+      minimum_role: senior_approver
+
+# Independent of whatever the model writes in estimated_usd.
+# Quote = MACHINE_HOURLY_RATES[machine] * (max_lifetime_minutes / 60).
+# These YAML figures are documentation; engine.py is authoritative.
+rates:
+  machine_usd_per_hour:
+    g2-standard-8: 0.85
+    g2-standard-12: 1.25
+    a2-highgpu-1g: 3.67
+    a2-megagpu-16g: 58.72
+
 # Where compute is allowed to exist.
 placement:
   allowed_providers: [gcp]
@@ -24,6 +53,7 @@ placement:
     - us-central1
   allowed_machine_types:
     - a2-highgpu-1g
+    - a2-megagpu-16g
     - g2-standard-8
     - g2-standard-12
 
@@ -60,9 +90,11 @@ tools:
   list_research_keys:          allow
 
   # -- Governed Execution & File Ops --
-  run_command:                 allow
-  run_job:                     allow
-  run_detached:                allow
+  # Shell/job tools require a ticket unless the command matches the
+  # read-only inspection allowlist in engine.SAFE_READONLY_COMMANDS.
+  run_command:                 approve
+  run_job:                     approve
+  run_detached:                approve
   detached_status:             allow
   generate_training_config:    allow
   upload_file:                 allow
@@ -70,7 +102,7 @@ tools:
   sync_outputs:                allow
   agent_handshake:             allow
   update_agent_context:        allow
-  dispatch_local_subagent:     allow
+  dispatch_local_subagent:     approve
 
   # -- Spending & Provisioning (Human Sign-Off Required) --
   launch_gpu:                  approve
@@ -96,10 +128,23 @@ tools:
 egress:
   redact_patterns:
     - name: gcp_service_account_key
-      pattern: '"private_key"\s*:\s*"-----BEGIN'
-    - name: ssh_private_key
-      pattern: '-----BEGIN (RSA|OPENSSH|EC) PRIVATE KEY-----'
+      pattern: '"private_key"\s*:\s*"(?:\\.|[^"\\])*"'
+    # Complete PEM blocks are removed as a unit so key material cannot remain
+    # after only the header has been replaced. The second rule catches a
+    # truncated block returned by a failed command or exception.
+    - name: private_key_pem
+      pattern: '(?s)-----BEGIN (?:RSA |EC |DSA |OPENSSH |ENCRYPTED )?PRIVATE KEY-----.*?-----END (?:RSA |EC |DSA |OPENSSH |ENCRYPTED )?PRIVATE KEY-----'
+    - name: private_key_pem_truncated
+      pattern: '-----BEGIN (?:RSA |EC |DSA |OPENSSH |ENCRYPTED )?PRIVATE KEY-----[A-Za-z0-9+/=\r\n]{3,}'
+    - name: private_key_pem_header
+      pattern: '-----BEGIN (?:RSA |EC |DSA |OPENSSH |ENCRYPTED )?PRIVATE KEY-----'
     - name: bearer_token
       pattern: '(?i)bearer\s+[A-Za-z0-9._\-]{20,}'
+    - name: oauth_access_token
+      pattern: '(?<![A-Za-z0-9._\-])ya29\.[A-Za-z0-9._\-]{20,}'
+    - name: oauth_client_secret
+      pattern: '(?<![A-Za-z0-9_\-])GOCSPX-[A-Za-z0-9_\-]{20,}'
+    - name: jwt_token
+      pattern: '(?<![A-Za-z0-9_\-])eyJ[A-Za-z0-9_\-]{8,}\.[A-Za-z0-9_\-]{8,}\.[A-Za-z0-9_\-]{8,}'
     - name: gcp_api_key
       pattern: 'AIza[0-9A-Za-z_\-]{35}'
