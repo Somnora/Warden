@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Warden is a zero-trust governance control plane for autonomous AI agent fleets.">
+  <meta property="og:title" content="Warden: Making Autonomous AI Agent Fleets Governable">
+  <meta property="og:description" content="Policy gates, human approval, spend limits, DLP redaction, and tamper-evident evidence for agent actions.">
+  <meta property="og:type" content="article">
+  <title>Warden: Making Autonomous AI Agent Fleets Governable</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --ink: #eaf2ff;
+      --muted: #a6b4ca;
+      --line: rgba(166, 180, 202, .18);
+      --panel: rgba(16, 31, 54, .78);
+      --teal: #6fe6c8;
+      --violet: #a5adff;
+      --bg: #07101e;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 85% 0%, rgba(98, 98, 255, .16), transparent 30rem),
+        radial-gradient(circle at 0% 20%, rgba(35, 204, 176, .10), transparent 28rem),
+        var(--bg);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.7;
+    }
+
+    main { max-width: 940px; margin: 0 auto; padding: 64px 24px 84px; }
+    .eyebrow { color: var(--teal); font-size: .78rem; font-weight: 750; letter-spacing: .14em; text-transform: uppercase; }
+    h1 { max-width: 780px; margin: 14px 0 18px; font-size: clamp(2.35rem, 7vw, 5rem); line-height: 1.04; letter-spacing: -.055em; }
+    h2 { margin: 56px 0 14px; font-size: 1.65rem; letter-spacing: -.025em; }
+    p { color: var(--muted); font-size: 1.05rem; }
+    .lede { max-width: 720px; font-size: 1.25rem; line-height: 1.55; }
+    .meta { color: var(--muted); font-size: .95rem; }
+    .meta a, a { color: var(--teal); }
+    .notice { margin: 30px 0; padding: 18px 20px; border: 1px solid rgba(111, 230, 200, .35); border-radius: 16px; background: rgba(111, 230, 200, .08); color: #dcfff5; }
+    .notice strong { display: block; margin-bottom: 4px; color: var(--teal); }
+    .architecture { margin: 34px 0 8px; padding: 16px; border: 1px solid var(--line); border-radius: 20px; background: rgba(0, 0, 0, .24); }
+    .architecture img { display: block; width: 100%; height: auto; border-radius: 10px; }
+    figcaption { padding: 12px 4px 0; color: var(--muted); font-size: .88rem; }
+    .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; margin: 24px 0; }
+    .card { padding: 20px; border: 1px solid var(--line); border-radius: 16px; background: var(--panel); }
+    .card h3 { margin: 0 0 7px; font-size: 1.05rem; }
+    .card p { margin: 0; font-size: .96rem; }
+    code { padding: .12em .35em; border-radius: 5px; background: rgba(165, 173, 255, .12); color: #dfe2ff; font-size: .92em; }
+    .cta { display: inline-flex; align-items: center; gap: 8px; margin-top: 18px; padding: 12px 17px; border-radius: 10px; background: var(--teal); color: #07101e; font-weight: 800; text-decoration: none; }
+    .cta:hover { background: #a0f5df; }
+    footer { margin-top: 64px; padding-top: 22px; border-top: 1px solid var(--line); color: var(--muted); font-size: .9rem; }
+    @media (max-width: 680px) { main { padding: 42px 18px 60px; } .grid { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <main>
+    <div class="eyebrow">All Things Agentic Hackathon · Fortified Enterprise Fleet</div>
+    <h1>Making autonomous AI agent fleets governable</h1>
+    <p class="meta">Introducing Warden, a zero-trust governance control plane for agents that can take real infrastructure actions.</p>
+
+    <div class="notice">
+      <strong>Hackathon disclosure</strong>
+      I created this article for the purposes of entering the All Things Agentic Hackathon.
+    </div>
+
+    <p class="lede">AI agents are moving beyond chat. They can inspect systems, launch workloads, change configuration, and coordinate multi-step tasks. That is useful, but a prompt is not a security boundary. Warden is built around a stricter idea: autonomy should be enforceable at the execution boundary, with a human-visible trail of what happened and why.</p>
+
+    <figure class="architecture">
+      <img src="https://raw.githubusercontent.com/Somnora/Warden/main/assets/warden-system-architecture.svg" alt="Warden system architecture diagram">
+      <figcaption>Warden places policy, approval, workflow, observability, and audit evidence around the agent runtime.</figcaption>
+    </figure>
+
+    <h2>From agent intent to governed execution</h2>
+    <p>Every tool call passes through Warden’s Google Agent Development Kit interceptor before the underlying tool is allowed to execute. The policy engine evaluates the action, identity, provider, region, machine type, requested lifetime, and cost. Unknown or ungoverned tools fail closed instead of receiving an implicit allow.</p>
+
+    <div class="grid">
+      <section class="card">
+        <h3>Hard policy gates</h3>
+        <p>Disallowed regions, machines, actions, and ungoverned tools are blocked programmatically before a provider call.</p>
+      </section>
+      <section class="card">
+        <h3>Spend and TTL limits</h3>
+        <p>Launch cost comes from an authoritative rate card, while every compute action carries a bounded teardown lifetime.</p>
+      </section>
+      <section class="card">
+        <h3>Durable human approval</h3>
+        <p>High-impact actions park in a durable workflow until an operator reviews the exact request and grants permission.</p>
+      </section>
+      <section class="card">
+        <h3>Evidence that survives the run</h3>
+        <p>Decisions are sealed into a tamper-evident SHA-256 audit chain, while sensitive credentials are redacted before egress.</p>
+      </section>
+    </div>
+
+    <h2>Approval is part of the workflow</h2>
+    <p>When a mission needs sign-off, Warden records the pending state instead of asking an operator to race a retry. The workflow parks durably, the operator reviews a preflight card with placement, cost, TTL, policy rules, and rollback information, and a verified approval resumes the work asynchronously. Approval identity is bound to the run and action, and hard policy denials remain non-overridable.</p>
+
+    <h2>A small demo with a large boundary</h2>
+    <p>The end-to-end demo makes the boundary visible. A read-only inventory call is allowed. A launch in a disallowed region is denied. An ungoverned credential-modification tool is denied. A permitted GPU launch pauses for human approval, then resumes after the operator decision. Finally, the demo shows credential redaction and verifies the audit chain.</p>
+
+    <p>This is the point of the control plane: the agent can still be capable and useful, but capability does not silently become authority.</p>
+
+    <a class="cta" href="https://github.com/Somnora/Warden">Explore Warden on GitHub →</a>
+
+    <footer>
+      Warden is an open-source hackathon project. Read the implementation, policy definitions, tests, and demo in the <a href="https://github.com/Somnora/Warden">public repository</a>.
+    </footer>
+  </main>
+</body>
+</html>
