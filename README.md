@@ -249,6 +249,12 @@ The desktop launcher starts Warden on a private loopback port and opens the
 dashboard in a native app window. It defaults to safe `mock` mode; live Cloud
 Run settings remain opt-in through the existing environment variables.
 
+For the fastest setup, download the platform package from the repository root:
+
+- [macOS Apple Silicon installer](Warden-macOS-arm64.dmg)
+- [Windows x64 installer](Warden.exe)
+- [Desktop installation and source fallback guide](DESKTOP_DOWNLOADS.md)
+
 ```bash
 # macOS (Apple Silicon): produces dist/Warden-macOS-arm64.dmg
 bash scripts/build_macos_dmg.sh
