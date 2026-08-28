@@ -6,6 +6,10 @@
 
 AI agents are moving beyond chat. They can inspect systems, launch workloads, change configuration, and coordinate multi-step tasks. That is useful, but a prompt is not a security boundary. Warden is built around a stricter idea: autonomy should be enforceable at the execution boundary, with a human-visible trail of what happened and why.
 
+![Warden system architecture](https://raw.githubusercontent.com/Somnora/Warden/main/assets/warden-system-architecture-devpost.png)
+
+Warden places policy, approval, workflow, observability, and audit evidence around the agent runtime.
+
 ## From agent intent to governed execution
 
 Every tool call passes through Warden’s Google Agent Development Kit interceptor before the underlying tool is allowed to execute. The policy engine evaluates the action, identity, provider, region, machine type, requested lifetime, and cost. Unknown or ungoverned tools fail closed instead of receiving an implicit allow.
