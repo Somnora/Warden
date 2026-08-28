@@ -13,7 +13,7 @@ dependencies = [
     "google-cloud-firestore>=2.19",
     "google-cloud-tasks>=2.18",
     "google-cloud-asset>=3.30",
-    "google-cloud-security-center>=1.37",
+    "google-cloud-securitycenter>=1.37",
     "google-cloud-bigquery>=3.35",
     "google-cloud-storage>=3.2",
     # ADK 2.7.x binds the MCP 1.x session API. MCP SDK 2.0.0 relocated
