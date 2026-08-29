@@ -1,0 +1,89 @@
+{
+  "schema": "warden.live-vm-evidence.v1",
+  "project": "somnora-dev-01",
+  "zone": "us-central1-a",
+  "instance_name": "warden-live-demo-0f88a76f",
+  "machine_type": "g2-standard-8",
+  "ttl_minutes": 5,
+  "quoted_cost_ceiling_usd": 0.0708,
+  "real_provider_call": true,
+  "billing_enabled": true,
+  "cleanup": "verified-absent",
+  "serial_proof_observed": true,
+  "provider_self_link": "https://www.googleapis.com/compute/v1/projects/somnora-dev-01/zones/us-central1-a/instances/warden-live-demo-0f88a76f",
+  "ledger_verdict": {
+    "ok": true,
+    "checked": 3,
+    "broken_at": null,
+    "detail": "3 records verified"
+  },
+  "ledger": [
+    {
+      "seq": 0,
+      "ts": "2026-08-28T03:04:15.042977+00:00",
+      "fleet": "warden-live-demo",
+      "run_id": "live-demo-67ed285f-49fb-4cd5-9ffd-090bc1e69096",
+      "actor": "infrastructure_provisioner",
+      "tool": "launch_gpu",
+      "disposition": "approve",
+      "reason": "tool 'launch_gpu' requires human approval",
+      "rules": [
+        "placement.ok",
+        "budget.ok",
+        "tools.launch_gpu=approve"
+      ],
+      "args_digest": "93bd115465bd1a85ed0178cb23cec508638e376e38ab2c993abbd06dbb409005",
+      "redactions": [],
+      "approver": "local-operator-confirmation",
+      "outcome": null,
+      "cost_usd": null,
+      "prev_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+      "entry_hash": "8c4ebf8c8429468e3d6e0b4f9aa54f2c4f94366979e2cdd018cfec98b5f7de3e"
+    },
+    {
+      "seq": 1,
+      "ts": "2026-08-28T03:04:25.942504+00:00",
+      "fleet": "warden-live-demo",
+      "run_id": "live-demo-67ed285f-49fb-4cd5-9ffd-090bc1e69096",
+      "actor": "infrastructure_provisioner",
+      "tool": "launch_gpu",
+      "disposition": "allow",
+      "reason": "exact action approved; provider reported a resource identifier",
+      "rules": [
+        "placement.ok",
+        "budget.ok",
+        "tools.launch_gpu=approve",
+        "approval.exact_action",
+        "provider.gce"
+      ],
+      "args_digest": "93bd115465bd1a85ed0178cb23cec508638e376e38ab2c993abbd06dbb409005",
+      "redactions": [],
+      "approver": "local-operator-confirmation",
+      "outcome": "ok",
+      "cost_usd": 0.0708,
+      "prev_hash": "8c4ebf8c8429468e3d6e0b4f9aa54f2c4f94366979e2cdd018cfec98b5f7de3e",
+      "entry_hash": "3984a4ae61623e68c7bc1a95b744db76ba93b961720014e479be46e95bde2270"
+    },
+    {
+      "seq": 2,
+      "ts": "2026-08-28T03:06:27.163659+00:00",
+      "fleet": "warden-live-demo",
+      "run_id": "live-demo-67ed285f-49fb-4cd5-9ffd-090bc1e69096",
+      "actor": "infrastructure_provisioner",
+      "tool": "terminate_instance",
+      "disposition": "allow",
+      "reason": "bounded live demo cleanup",
+      "rules": [
+        "cleanup.finally",
+        "provider.max_run_duration_delete"
+      ],
+      "args_digest": "f782854d148db823fd66d2c6f06cb1d0a99864dfaaf80610e641a9e33f3c4f19",
+      "redactions": [],
+      "approver": null,
+      "outcome": "ok",
+      "cost_usd": null,
+      "prev_hash": "3984a4ae61623e68c7bc1a95b744db76ba93b961720014e479be46e95bde2270",
+      "entry_hash": "efa6d2956b3af8e991e7011b874ae377c8c5428664c0b1d50288dafd2e5f7c83"
+    }
+  ]
+}

@@ -435,6 +435,23 @@ class WardenPlugin(BasePlugin):
                     Decision(Disposition.ALLOW, tool, "durable spend reservation settled", ("spend.settled",)),
                     outcome="spend_settled",
                 )
+                if result.get("cleanup_verified") is True:
+                    for resource_id in resource_ids:
+                        released = await self.spend_store.release_resource(
+                            resource_id, reason="provider lifecycle returned verified cleanup"
+                        )
+                        if released is not None:
+                            self._spend = released.snapshot
+                    await self._record(
+                        actor, tool, args,
+                        Decision(
+                            Disposition.ALLOW,
+                            tool,
+                            "provider lifecycle verified resource absence",
+                            ("spend.capacity_released", "cleanup.verified"),
+                        ),
+                        outcome="spend_capacity_released",
+                    )
             elif tool in {"terminate_instance", "terminate_cluster"} and _teardown_verified(result):
                 resource_id = _teardown_resource_id(tool, args, result)
                 if resource_id:

@@ -74,7 +74,9 @@ def create_provisioner_agent(
             "MANDATORY POLICY: Always include max_lifetime_minutes and machine_type. "
             "Warden quotes cost from the policy rate card; do not invent a cheaper estimated_usd "
             "to bypass budget. Never attempt to launch resources in unapproved regions. "
-            "Be aware that spending tools require human approval before execution."
+            "Be aware that spending tools require human approval before execution. "
+            "For bounded provider proofs, a result with status COMPLETED and "
+            "cleanup_verified=true is success; report its proof and never retry the launch."
         ),
         tools=tools or [],
     )

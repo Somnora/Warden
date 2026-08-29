@@ -17,11 +17,22 @@ def configure_cloud_trace() -> bool:
     if _configured:
         return True
     try:
+        import google.auth
         from google.adk.telemetry import google_cloud
         from google.adk.telemetry.setup import maybe_set_otel_providers
 
-        hooks = google_cloud.get_gcp_exporters(enable_cloud_tracing=True)
-        maybe_set_otel_providers(otel_hooks_to_setup=[hooks])
+        credentials, project_id = google.auth.default()
+        if not project_id:
+            raise RuntimeError("Google Cloud project could not be detected for trace export")
+        hooks = google_cloud.get_gcp_exporters(
+            enable_cloud_tracing=True,
+            google_auth=(credentials, project_id),
+        )
+        resource = google_cloud.get_gcp_resource(project_id=project_id)
+        maybe_set_otel_providers(
+            otel_hooks_to_setup=[hooks],
+            otel_resource=resource,
+        )
         _configured = True
         return True
     except Exception:

@@ -392,6 +392,22 @@
                         <button type="submit" class="px-3 py-1.5 text-[11px] font-semibold text-white bg-emerald-600 hover:bg-emerald-500 rounded-lg transition">Create Mission</button>
                     </div>
                 </form>
+                <div id="live-vm-card" class="hidden mt-3 p-3 rounded-lg border border-cyan-500/30 bg-cyan-500/5">
+                    <div class="flex items-center justify-between gap-3">
+                        <div class="flex items-center gap-2">
+                            <span id="live-vm-pulse" class="w-2 h-2 rounded-full bg-cyan-400"></span>
+                            <span class="text-[10px] uppercase tracking-widest font-semibold text-cyan-300">Real Google VM lifecycle</span>
+                        </div>
+                        <span id="live-vm-phase" class="text-[10px] font-mono uppercase text-cyan-200">ready</span>
+                    </div>
+                    <p id="live-vm-message" class="mt-2 text-xs text-gray-300">Guarded backend ready. No VM exists.</p>
+                    <div id="live-vm-proof" class="hidden mt-2 p-2 rounded bg-gray-950/70 text-[10px] font-mono text-emerald-300 break-all"></div>
+                    <div class="mt-2 grid grid-cols-3 gap-2 text-[10px]">
+                        <div class="rounded bg-gray-900/70 p-2"><span class="block text-gray-600">Project</span><span id="live-vm-project" class="text-gray-300">—</span></div>
+                        <div class="rounded bg-gray-900/70 p-2"><span class="block text-gray-600">Zone</span><span id="live-vm-zone" class="text-gray-300">—</span></div>
+                        <div class="rounded bg-gray-900/70 p-2"><span class="block text-gray-600">Cleanup</span><span id="live-vm-cleanup" class="text-gray-300">not started</span></div>
+                    </div>
+                </div>
                 <div id="missions-container" class="mt-4 pt-3 border-t border-gray-800 space-y-2">
                     <div class="text-xs text-gray-500">No Missions yet.</div>
                 </div>
@@ -643,9 +659,11 @@
             const badge = document.getElementById("mode-badge");
             const cloudRun = data.deployment === "cloud_run";
             const live = data.mode === "live";
-            badge.innerText = cloudRun
-                ? (live ? "Cloud Run live" : "Cloud Run hosted · simulated execution")
-                : "Local secure demo";
+            badge.innerText = data.live_vm_demo
+                ? "Local dashboard · real Google VM"
+                : cloudRun
+                    ? (live ? "Cloud Run live" : "Cloud Run hosted · simulated execution")
+                    : "Local secure demo";
             badge.className = cloudRun
                 ? "px-2 py-0.5 text-xs font-semibold bg-emerald-500/10 text-emerald-300 border border-emerald-500/30 rounded-full"
                 : "px-2 py-0.5 text-xs font-semibold bg-cyan-500/10 text-cyan-300 border border-cyan-500/30 rounded-full";
@@ -657,6 +675,8 @@
             if (modelBadge) {
                 modelBadge.innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span> ${escapeHTML(data.model || 'Gemini')} · ADK 2.7`;
             }
+            const liveCard = document.getElementById("live-vm-card");
+            if (liveCard) liveCard.classList.toggle("hidden", !data.live_vm_demo);
             const select = document.getElementById("model-select");
             if (select && Array.isArray(data.models) && data.models.length) {
                 const previous = select.value || data.model;
@@ -667,6 +687,32 @@
                     ? previous
                     : (data.model || data.models[0].id);
             }
+        }
+
+        async function refreshLiveVmStatus() {
+            const card = document.getElementById("live-vm-card");
+            if (!card || card.classList.contains("hidden")) return;
+            const data = await fetchJSON("/demo/live-vm/status");
+            if (!data) return;
+            document.getElementById("live-vm-phase").innerText = data.phase || "unknown";
+            document.getElementById("live-vm-message").innerText = data.message || "Waiting for lifecycle state.";
+            document.getElementById("live-vm-project").innerText = data.project || "—";
+            document.getElementById("live-vm-zone").innerText = data.zone || "—";
+            document.getElementById("live-vm-cleanup").innerText = data.cleanup_verified ? "verified absent" : "pending";
+            const proof = document.getElementById("live-vm-proof");
+            if (data.proof) {
+                proof.innerText = data.proof;
+                proof.classList.remove("hidden");
+            } else {
+                proof.classList.add("hidden");
+            }
+            const pulse = document.getElementById("live-vm-pulse");
+            pulse.className = "w-2 h-2 rounded-full " + (
+                data.phase === "cleaned" ? "bg-emerald-400" :
+                data.phase === "failed" || data.phase === "cleanup_unverified" ? "bg-rose-400" :
+                ["creating", "running", "proof_observed", "deleting"].includes(data.phase)
+                    ? "bg-amber-400 animate-pulse" : "bg-cyan-400"
+            );
         }
 
         async function refreshRegistry() {
@@ -764,8 +810,13 @@
                     ? `<button data-action="mission-stop" data-id="${escapeHTML(encodeURIComponent(m.mission_id))}" class="px-2.5 py-1.5 bg-rose-600 text-white text-[11px] font-semibold rounded">Emergency stop</button>` : "";
                 const progress = Number(m.progress_percent || 0);
                 const resources = (m.resources || []).map(resource => {
-                    const ttl = resource.remaining_seconds === null || resource.remaining_seconds === undefined
-                        ? 'TTL unavailable' : resource.remaining_seconds > 0 ? `${Math.ceil(resource.remaining_seconds / 60)}m remaining` : 'TTL elapsed';
+                    const ttl = resource.status === 'cleaned'
+                        ? 'cleanup verified'
+                        : resource.remaining_seconds === null || resource.remaining_seconds === undefined
+                            ? 'TTL unavailable'
+                            : resource.remaining_seconds > 0
+                                ? `${Math.ceil(resource.remaining_seconds / 60)}m remaining`
+                                : 'TTL elapsed';
                     return `<div class="flex justify-between text-[10px] text-gray-400"><span>${escapeHTML(resource.resource_type)} · ${escapeHTML(resource.resource_id)}</span><span class="${resource.status === 'cleaned' ? 'text-emerald-300' : 'text-amber-300'}">${escapeHTML(resource.status)} · ${ttl}</span></div>`;
                 }).join('');
                 const artifacts = (m.artifacts || []).map(artifact =>
@@ -1194,7 +1245,7 @@
                 refreshHealth(), refreshSpend(), refreshApprovals(), refreshLedger(),
                 refreshWorkflow(), refreshRegistry(), refreshMemory(),
                 refreshMissions(), refreshPolicyTemplates(),
-                refreshCloudEvidence(), refreshHud(),
+                refreshCloudEvidence(), refreshHud(), refreshLiveVmStatus(),
             ]);
         }
 

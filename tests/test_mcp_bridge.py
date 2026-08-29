@@ -2,6 +2,7 @@
 
 import pytest
 import httpx
+from warden import __version__
 from warden.fleet import initialize_fleet_runtime
 from warden.policy.approvals import MemoryApprovals
 from warden.tools.manifold_bridge import ManifoldInfrastructureBridge
@@ -17,7 +18,7 @@ def test_bridge_headers(bridge):
     headers = bridge._headers()
     assert headers["Authorization"] == "Bearer test-secret-token"
     assert headers["Content-Type"] == "application/json"
-    assert headers["User-Agent"] == "Warden-Bridge/0.2.2"
+    assert headers["User-Agent"] == f"Warden-Bridge/{__version__}"
 
 
 @pytest.mark.asyncio

@@ -243,6 +243,49 @@ warden models
 warden models --model gemini-3.7-flash
 ```
 
+### Bounded real-VM demo (billable Google Cloud proof)
+
+The normal demo remains deterministic and creates no cloud resources. For a
+recording that proves a real provider and billing path, first run the safe
+preflight:
+
+```bash
+.venv/bin/python scripts/live_vm_demo.py
+```
+
+The real path requires an exact project confirmation:
+
+```bash
+.venv/bin/python scripts/live_vm_demo.py \
+  --execute \
+  --project somnora-dev-01 \
+  --confirm-project somnora-dev-01
+```
+
+To run the same bounded lifecycle visibly inside the automated dashboard demo:
+
+```bash
+.venv/bin/python scripts/drive_demo.py \
+  --live-vm \
+  --project somnora-dev-01 \
+  --confirm-project somnora-dev-01 \
+  --zone us-central1-a
+```
+
+The dashboard shows the provider phase, real instance identity, timestamped
+serial-console proof, Mission cleanup receipt, and verified-absent result. This
+mode is intentionally explicit and billable; running `scripts/drive_demo.py`
+without `--live-vm` remains the deterministic, non-billable mock recording.
+Cloud capacity and boot time can make the live recording longer than the mock
+four-minute timing.
+
+This creates one Spot `g2-standard-8` VM in `us-west1-a`, with no external IP,
+a five-minute Google Cloud enforced maximum run duration, and `DELETE` as the
+termination action. The script also deletes the VM in `finally`, verifies that
+it is absent, and writes a hash-chain evidence bundle to
+`artifacts/live-vm-evidence.json`. The conservative Warden quote is based on
+the on-demand rate even though the provider request uses Spot capacity.
+
 ### Desktop app (no terminal or browser URL)
 
 The desktop launcher starts Warden on a private loopback port and opens the
@@ -290,12 +333,31 @@ Armor call fails closed, so a prompt is never forwarded uninspected.
 ```bash
 export GOOGLE_CLOUD_PROJECT="your-project-id"
 export GOOGLE_CLOUD_REGION="us-central1"
-# Safe offline mock demo by default. Set live mode only when the Manifold
-# execution backend and its credentials are configured.
+# Safe offline mock demo by default.
 export WARDEN_MODE="mock"
 
 ./scripts/deploy_cloud_run.sh
 ```
+
+For the judge-facing proof, Warden can use a deliberately narrow Compute
+Engine backend directly from Cloud Run. It permits one Spot `g2-standard-8`
+(NVIDIA L4), no external IP, a maximum five-minute lifetime, immediate
+deletion, and a provider-side absence check:
+
+```bash
+export GOOGLE_CLOUD_PROJECT="your-project-id"
+export GOOGLE_CLOUD_REGION="us-central1"
+export WARDEN_MODE="live"
+export WARDEN_DEMO_LIVE_VM="true"
+export WARDEN_LIVE_VM_ZONE="us-central1-a"
+export WARDEN_LIVE_VM_CONFIRM_PROJECT="$GOOGLE_CLOUD_PROJECT"
+export WARDEN_ROLE_BINDINGS='{"operator@example.com":["administrator"]}'
+
+./scripts/deploy_cloud_run.sh
+```
+
+The exact project confirmation is mandatory. The runtime service account gets
+Compute Instance Admin only when this live GPU switch is enabled.
 
 The service is deployed as a private Cloud Run service; grant the intended
 operators `roles/run.invoker` rather than exposing approval controls publicly.

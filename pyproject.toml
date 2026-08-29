@@ -1,12 +1,13 @@
 [project]
 name = "warden"
-version = "0.2.2"
+version = "0.2.3"
 description = "A governed control plane for agent fleets that operate real GPU infrastructure on Google Cloud."
 license = "Apache-2.0"
 requires-python = ">=3.11"
 dependencies = [
     # Google Agent Framework (hackathon requirement 2)
-    "google-adk>=2.7.1",
+    # Keep the deployed ADK runtime on the tested 2.7 line for demo stability.
+    "google-adk>=2.7.1,<2.8",
     # Gemini Flash via Google GenAI / ADK (default: gemini-3.5-flash)
     "google-genai>=2.12",
     # Google Cloud infrastructure (hackathon requirement 3)
@@ -16,6 +17,9 @@ dependencies = [
     "google-cloud-securitycenter>=1.37",
     "google-cloud-bigquery>=3.35",
     "google-cloud-storage>=3.2",
+    "google-cloud-compute>=1.39",
+    # Required by google.adk.telemetry.google_cloud for Cloud Trace export.
+    "opentelemetry-exporter-otlp-proto-http>=1.42,<2",
     # ADK 2.7.x binds the MCP 1.x session API. MCP SDK 2.0.0 relocated
     # mcp.shared.session.ProgressFnT and McpToolset fails to import.
     "mcp>=1.29,<2",

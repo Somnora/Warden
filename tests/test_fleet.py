@@ -211,6 +211,54 @@ async def test_plugin_settles_shared_spend_then_releases_verified_teardown_capac
 
 
 @pytest.mark.asyncio
+async def test_plugin_releases_capacity_when_launch_lifecycle_already_cleaned():
+    spend_store = MemorySpendStore()
+    runtime = initialize_fleet_runtime(
+        backend=MockInfrastructureProvider(),
+        approvals=MemoryApprovals(),
+        run_id="live-lifecycle-spend-run",
+        spend_store=spend_store,
+    )
+    launch = next(t for t in runtime.toolsets["provisioner"] if t.name == "launch_gpu")
+    context = type("Provisioner", (), {"agent_name": "infrastructure_provisioner"})()
+    args = {
+        "provider": "gcp",
+        "region": "us-central1",
+        "machine_type": "g2-standard-8",
+        "max_lifetime_minutes": 5,
+    }
+    tokens = begin_workflow(runtime.run_id)
+    try:
+        pending = await runtime.plugin.before_tool_callback(
+            tool=launch, tool_args=args, tool_context=context
+        )
+        await runtime.approvals.decide(
+            pending["approval_id"], granted=True, approver="operator@example.com"
+        )
+        assert await runtime.plugin.before_tool_callback(
+            tool=launch, tool_args=args, tool_context=context
+        ) is None
+        assert await runtime.plugin.after_tool_callback(
+            tool=launch,
+            tool_args=args,
+            tool_context=context,
+            result={
+                "status": "CLEANED",
+                "id": "warden-dashboard-cleaned",
+                "cleanup_verified": True,
+            },
+        ) is None
+    finally:
+        finish_workflow(tokens)
+
+    summary = await spend_store.summary(runtime.run_id)
+    assert summary.settled_usd == pytest.approx(0.0708)
+    assert summary.live_instances == 0
+    records = await runtime.ledger.read()
+    assert records[-1].outcome == "spend_capacity_released"
+
+
+@pytest.mark.asyncio
 async def test_plugin_hard_denies_policy_violation(runtime):
     plugin = runtime.plugin
     tool = [t for t in runtime.toolsets["provisioner"] if t.name == "launch_gpu"][0]

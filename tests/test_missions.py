@@ -199,3 +199,35 @@ async def test_outcomes_capture_resources_artifacts_and_cleanup_receipts():
     assert complete.cleanup_receipts[0].status == "verified_absent"
     assert any(event.kind == "cleanup_receipt" for event in complete.events)
     assert "stdout" not in str(complete)
+
+
+@pytest.mark.asyncio
+async def test_launch_result_can_project_provider_verified_cleanup_directly():
+    store = MemoryMissionStore()
+    mission = await store.create(
+        objective="Create one proof VM then delete it",
+        created_by="operator",
+        contract=contract(max_lifetime_minutes=5),
+        model="gemini-3.5-flash",
+    )
+    await store.record_tool_result(
+        mission_id=mission.mission_id,
+        tool="launch_gpu",
+        args={
+            "provider": "gcp",
+            "region": "us-west1",
+            "machine_type": "g2-standard-8",
+            "max_lifetime_minutes": 5,
+        },
+        result={
+            "id": "warden-dashboard-proof",
+            "status": "CLEANED",
+            "cleanup_verified": True,
+        },
+    )
+    current = await store.get(mission.mission_id)
+    assert current is not None
+    assert current.resources[0].status == "cleaned"
+    assert current.resources[0].cleaned_at is not None
+    assert current.cleanup_receipts[0].resource_id == "warden-dashboard-proof"
+    assert current.cleanup_receipts[0].status == "verified_absent"

@@ -697,6 +697,32 @@ def _record_tool_result(
             else:
                 existing.status = result_status
         mission.resources[:] = mission.resources[-100:]
+        if resource_id and data.get("cleanup_verified") is True:
+            verified_at = _now()
+            resource = next(
+                (item for item in mission.resources if item.resource_id == resource_id), None
+            )
+            if resource:
+                resource.status = "cleaned"
+                resource.cleaned_at = verified_at
+            mission.cleanup_receipts.append(
+                CleanupReceipt(
+                    receipt_id=f"cleanup-{uuid4().hex}",
+                    resource_id=resource_id,
+                    resource_type=resource_type,
+                    tool="terminate_instance" if resource_type == "instance" else "terminate_cluster",
+                    status="verified_absent",
+                    verified_at=verified_at,
+                )
+            )
+            mission.cleanup_receipts[:] = mission.cleanup_receipts[-100:]
+            _append_event(
+                mission,
+                "cleanup_receipt",
+                f"Cleanup verified for {resource_id}",
+                tool="terminate_instance" if resource_type == "instance" else "terminate_cluster",
+                status="verified_absent",
+            )
 
     if tool in {"sync_outputs", "download_file"}:
         source = _optional_string(args.get("instance_id")) or "mission"

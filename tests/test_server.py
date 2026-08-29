@@ -2,10 +2,12 @@
 
 import pytest
 from fastapi.testclient import TestClient
+from warden import __version__
 import warden.server as server
 from warden.fleet import FleetTurnResult, initialize_fleet_runtime
 from warden.ledger.chain import Verdict
 from warden.server import app, set_runtime
+from warden.workflows import Workflow, WorkflowState
 
 
 @pytest.fixture
@@ -20,7 +22,7 @@ def test_health_endpoint(client):
     assert response.status_code == 200
     data = response.json()
     assert data["status"] == "healthy"
-    assert data["version"] == "0.2.2"
+    assert data["version"] == __version__
     assert data["fleet"] == "warden-demo"
     assert len(data["subagents"]) == 3
     assert data["ledger"] == "MemoryLedger"
@@ -479,3 +481,37 @@ def test_hud_surfaces_parked_approval_for_one_click_resume(client):
 
     after = client.get("/hud").json()
     assert after["parked"] is None
+
+
+def test_live_cloud_task_resume_uses_verified_oidc_identity(client, monkeypatch):
+    monkeypatch.setenv("WARDEN_MODE", "live")
+    monkeypatch.setenv("WARDEN_SERVICE_URL", "https://warden.example.run.app")
+    monkeypatch.setenv("WARDEN_TASK_SERVICE_ACCOUNT", "worker@example.iam.gserviceaccount.com")
+
+    async def verified_identity(request, audience):
+        assert audience == "https://warden.example.run.app"
+        return "worker@example.iam.gserviceaccount.com", {"email": "worker@example.iam.gserviceaccount.com"}
+
+    async def run_workflow(workflow_id, resume=False):
+        assert workflow_id == "wf-live"
+        assert resume is True
+        return (
+            FleetTurnResult(response_text="resumed", events_count=1),
+            Workflow(
+                workflow_id="wf-live",
+                prompt="launch",
+                user_id="operator",
+                session_id="session",
+                requested_by="operator",
+                run_id="run-live",
+                state=WorkflowState.COMPLETED,
+                resume_count=1,
+            ),
+        )
+
+    monkeypatch.setattr(server, "_verified_oidc_identity", verified_identity)
+    monkeypatch.setattr(server, "_run_workflow", run_workflow)
+    response = client.post("/internal/workflows/wf-live/resume")
+    assert response.status_code == 200
+    assert response.json()["workflow"]["state"] == "completed"
+    assert response.json()["events_count"] == 1

@@ -7,6 +7,7 @@ DIST_DIR="${ROOT_DIR}/dist"
 BUILD_DIR="${ROOT_DIR}/build/desktop-macos"
 APP_PATH="${DIST_DIR}/Warden.app"
 DMG_PATH="${DIST_DIR}/Warden-macOS-arm64.dmg"
+APP_VERSION="$(cd "${ROOT_DIR}" && "${VENV_PYTHON}" -c 'import tomllib; print(tomllib.load(open("pyproject.toml", "rb"))["project"]["version"])')"
 
 if [[ ! -x "${VENV_PYTHON}" ]]; then
   echo "Create the project virtual environment first: python3 -m venv .venv" >&2
@@ -34,9 +35,24 @@ fi
   --workpath "${BUILD_DIR}" \
   "${ROOT_DIR}/warden/desktop.py"
 
+PLIST_PATH="${APP_PATH}/Contents/Info.plist"
+if /usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" "${PLIST_PATH}" >/dev/null 2>&1; then
+  /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString ${APP_VERSION}" "${PLIST_PATH}"
+else
+  /usr/libexec/PlistBuddy -c "Add :CFBundleShortVersionString string ${APP_VERSION}" "${PLIST_PATH}"
+fi
+if /usr/libexec/PlistBuddy -c "Print :CFBundleVersion" "${PLIST_PATH}" >/dev/null 2>&1; then
+  /usr/libexec/PlistBuddy -c "Set :CFBundleVersion ${APP_VERSION}" "${PLIST_PATH}"
+else
+  /usr/libexec/PlistBuddy -c "Add :CFBundleVersion string ${APP_VERSION}" "${PLIST_PATH}"
+fi
+# Updating Info.plist invalidates PyInstaller's ad-hoc signature, so reseal the
+# complete bundle. Production Developer ID signing can replace this identity.
+codesign --force --deep --sign - "${APP_PATH}"
+
 STAGE_DIR="$(mktemp -d)"
 trap 'rm -rf "${STAGE_DIR}"' EXIT
 cp -R "${APP_PATH}" "${STAGE_DIR}/"
 ln -s /Applications "${STAGE_DIR}/Applications"
 hdiutil create -volname "Warden" -srcfolder "${STAGE_DIR}" -ov -format UDZO "${DMG_PATH}"
-echo "Created ${DMG_PATH}"
+echo "Created ${DMG_PATH} (version ${APP_VERSION})"

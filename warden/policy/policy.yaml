@@ -62,6 +62,10 @@ placement:
 #   approve  - suspend, require a human decision, then record both
 #   deny     - refuse, record the attempt
 tools:
+  # ADK orchestration only. The receiving agent's provider tools still pass
+  # through this same runner-level WardenPlugin before they can execute.
+  transfer_to_agent:            allow
+
   # -- Onboarding & Documentation (Free / Read-Only) --
   get_skill:                   allow
   get_work_log:                allow

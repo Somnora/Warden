@@ -141,6 +141,7 @@ Director's notes:
 Use an even, confident, natural American English delivery. Sound authoritative but not theatrical.
 Maintain crisp articulation and a measured pace. Use restrained emphasis on Warden, Mission,
 bounded freedom, and proof. Do not add an introduction, commentary, music, or sound effects.
+Pronounce "autonomy" clearly as "aw-TAH-nuh-mee"; never pronounce it as "economy."
 Read only the transcript. Aim to finish this passage naturally in approximately {target:.1f} seconds.
 
 Transcript:

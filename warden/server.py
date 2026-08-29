@@ -80,6 +80,7 @@ from warden.missions import (
 )
 from warden.spend import FirestoreSpendStore, MemorySpendStore, SpendStore
 from warden.registry import CATALOG_VERSION, catalog_for
+from warden.tools.gce_live_demo import GceLiveDemoBackend, live_demo_status
 from warden.workflow_context import begin_workflow, finish_workflow
 
 
@@ -228,8 +229,16 @@ def get_runtime() -> WardenFleetRuntime:
             _cloud_collector = MockCloudSignalCollector()
         if _evidence_archive is None and mode != "live":
             _evidence_archive = NoopEvidenceArchive()
+        demo_backend = None
+        if os.environ.get("WARDEN_DEMO_LIVE_VM", "false").lower() == "true":
+            project = os.environ.get("GOOGLE_CLOUD_PROJECT", "")
+            demo_backend = GceLiveDemoBackend(
+                project=project,
+                zone=os.environ.get("WARDEN_LIVE_VM_ZONE", "us-central1-a"),
+            )
         _runtime = initialize_fleet_runtime(
             mode=mode,
+            backend=demo_backend,
             manifold_url=manifold_url,
             api_token=api_token,
             run_id=run_id,
@@ -712,12 +721,23 @@ async def _run_deterministic_mock_turn(
             observation = replacement or provider_result
             resource_id = observation.get("id") or observation.get("instance_id") or "recorded"
             quoted = runtime.policy.quote_usd(tool_name, tool_args) or 0.0
+            execution_summary = (
+                "Mission completed through a real Google Compute lifecycle."
+                if os.environ.get("WARDEN_DEMO_LIVE_VM", "false").lower() == "true"
+                else "Mission completed in safe local mock mode."
+            )
+            cleanup_summary = (
+                "\nBoot proof observed: yes\nCleanup: verified absent"
+                if provider_result and provider_result.get("cleanup_verified") is True
+                else ""
+            )
             response_text = (
-                "Mission completed in safe local mock mode.\n"
+                f"{execution_summary}\n"
                 f"Resource: {resource_id}\n"
                 f"Placement: {tool_args['machine_type']} in {tool_args['region']}\n"
                 f"Rate-card cost settled: ${quoted:.2f}\n"
                 f"Teardown TTL: {tool_args['max_lifetime_minutes']} minutes"
+                f"{cleanup_summary}"
             )
         else:
             response_text = (
@@ -834,6 +854,8 @@ async def health_check() -> dict[str, Any]:
         "demo_deterministic": (
             os.environ.get("WARDEN_DEMO_DETERMINISTIC", "false").lower() == "true"
         ),
+        "live_vm_demo": os.environ.get("WARDEN_DEMO_LIVE_VM", "false").lower() == "true",
+        "live_vm_status": live_demo_status(),
         "deployment": "cloud_run" if os.environ.get("K_SERVICE") else "local",
         "ledger": type(runtime.ledger).__name__,
         "approval_store": type(runtime.approvals).__name__,
@@ -854,6 +876,12 @@ async def health_check() -> dict[str, Any]:
         "agent_catalog_version": CATALOG_VERSION,
         "subagents": [sa.name for sa in runtime.lead_agent.sub_agents],
     }
+
+
+@app.get("/demo/live-vm/status")
+async def get_live_vm_demo_status(_: Operator = Depends(get_operator)) -> dict[str, Any]:
+    """Expose sanitized lifecycle state for the explicitly enabled GPU proof."""
+    return live_demo_status()
 
 
 @app.get("/identity/me")
@@ -1862,7 +1890,7 @@ async def resume_workflow(workflow_id: str, request: Request) -> dict[str, Any]:
                 detail="Cloud Tasks worker identity is not configured",
             )
         try:
-            principal = await _verified_oidc_principal(request, audience)
+            principal, _ = await _verified_oidc_identity(request, audience)
         except Exception as exc:
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="invalid task identity") from exc
         if principal != expected_worker:
